@@ -9,10 +9,11 @@ import ising.utils.calculation_utils as cu
 # ========================
 # Thermalization Plot Utils
 # ========================
+
+
 # -------------------
 # Eigenvalue Distribution
 # -------------------
-
 
 def plot_evaldist(evals, path=None):
     """Plots the eigenvalue distribution of evals and compares it to a

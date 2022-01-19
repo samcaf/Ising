@@ -12,12 +12,11 @@ from ising.utils.file_utils import save_sparse_csr, load_sparse_csr
 ########################################
 # 1D Spin Chain Calculation Utilities
 ########################################
-# A python toolbox for calculations on one dimensional quantum spin chains.
+
 
 # ================================
 # Time evolution
 # ================================
-
 
 def time_evolve(state, evals, evecs, Ts):
     """Time evolves a state in a system with eigenvalues evals and eigenvectors

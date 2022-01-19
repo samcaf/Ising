@@ -13,7 +13,6 @@ from ising.utils.file_utils import valid_models, projfile, sysfile, eigenfile
 # ===================================
 # Models
 # ===================================
-# Code to generate Hamiltonians on spin chains.
 
 
 # ------------------------------------

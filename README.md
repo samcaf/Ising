@@ -2,6 +2,7 @@
 
 [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
+A python toolbox for calculations on one dimensional quantum spin chains. Includes model Hamiltonians, operators, symmetries, spectrum analysis, entropy calculations, and examples.
 
 
 ## Table of Contents

@@ -12,9 +12,6 @@ from pprint import pprint
 ########################################
 # 1D Spin Chain Operator Utilities
 ########################################
-# A python toolbox for operators and symmetries on one dimensional quantum
-# spin chains.
-
 
 # ================================
 # Operator Utilities
