@@ -19,14 +19,25 @@ from ising.utils.file_utils import valid_models, projfile, sysfile, eigenfile
 # Mixed Field Ising model
 # ------------------------------------
 
-def gen_mixedfieldising(L, J, hz, hx, bc='obc', **params):
+def gen_mixedfieldising(L, J, hz, hx, bc='pbc', **params):
     """Generates a Hamiltonian for the mixed field ising model.
     A non-zero hz leads to to non-integrable dynamics.
     """
-    s0, sx, sy, sz = ou.gen_s0sxsysz(L)
-    H = J*ou.gen_interaction_kdist(sz, k=1, bc=bc)\
-        + hx*ou.gen_op_total(sx) + hz*ou.gen_op_total(sz)
+    # Pauli Matrices
+    S = 1/2
+    s0, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
+    s0 = s0[0]
+    sx = sx[0]
+    sy = sy[0]
+    sz = sz[0]
 
+    # Interactions
+    Hxx = J * ou.gt(ou.gen_tnsk(ou.sk(sx, sx), L, S, n=2, bc=bc))
+    Hx = hx * ou.gt(ou.gen_tnsk(sx, L, S, n=1, bc=bc))
+    Hz = hz * ou.gt(ou.gen_tnsk(sz, L, S, n=1, bc=bc))
+
+    # Full Hamiltonian
+    H = Hxx + Hx + Hz
     return H
 
 
@@ -34,68 +45,71 @@ def gen_mixedfieldising(L, J, hz, hx, bc='obc', **params):
 # XXZ model
 # ------------------------------------
 
-def gen_xxz_nn(L, a, b, bc='obc', **params):
+def gen_xxz_nn(L, a, b, bc='pbc', **params):
     """Generates a Hamiltonian for the xxz model with nearest neighbor
     interactions."""
     s0, sx, sy, sz = ou.gen_s0sxsysz(L)
-    H = a*ou.gen_interaction_kdist(sx, k=1, bc=bc)\
-        + a*ou.gen_interaction_kdist(sy, k=1, bc=bc)\
-        + b*ou.gen_interaction_kdist(sz, k=1, bc=bc)
-    return H
-
-
-def gen_xxz_nnn(L, j2, bc='obc', **params):
-    """Generates a next-to-nearest neighbor interaction for the xxz model.
-    This additional term in the Hamiltonian leads to non-integrable dynamics.
-    """
-    s0, sx, sy, sz = ou.gen_s0sxsysz(L)
-    H1 = j2*ou.gen_interaction_kdist(sz, k=2, bc=bc)
-    return H1
-
-
-# ------------------------------------
-# ZXXXXZZ model
-# ------------------------------------
-
-def gen_zxxxxzz(L):
-    """Generates a Hamiltonian for the xxz model with nearest neighbor
-    interactions."""
+    # Pauli Matrices
     S = 1/2
-    h = .5
-    hxxxx = .3
-    hzz = .2
-
     s0, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
     s0 = s0[0]
     sx = sx[0]
     sy = sy[0]
     sz = sz[0]
 
-    Hxx = ou.gt(ou.gen_tnsk(ou.sk(sx, sx), L, S, 2, 0, 'pbc'))
-    Hz = h*ou.gt(ou.gen_tnsk(sz, L, S, 1, 0, 'pbc'))
+    # Interactions
+    Hxx = a * ou.gt(ou.gen_tnsk(ou.sk(sx, sx), L, S, n=2, bc=bc))
+    Hyy = a * ou.gt(ou.gen_tnsk(ou.sk(sy, sy), L, S, n=2, bc=bc))
+    Hzz = b * ou.gt(ou.gen_tnsk(ou.sk(sz, sz), L, S, n=2, bc=bc))
+
+    # Full Hamiltonian
+    H = Hxx + Hyy + Hzz
+    return H
+
+
+def gen_xxz_nnn(L, j2, bc='pbc', **params):
+    """Generates a next-to-nearest neighbor interaction for the xxz model.
+    This additional term in the Hamiltonian leads to non-integrable dynamics.
+    """
+    # Pauli Matrices
+    S = 1/2
+    s0, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
+    s0 = s0[0]
+    sx = sx[0]
+    sy = sy[0]
+    sz = sz[0]
+
+    # Interactions
+    Hxx_nnn = j2 * ou.gt(ou.gen_tnsk(ou.sk(ou.sk(sx, np.eye(int(2*S+1))), sx),
+                                     L, S, n=3, bc=bc))
+    return Hxx_nnn
+
+
+# ------------------------------------
+# ZXXXXZZ model
+# ------------------------------------
+
+def gen_zxxxxzz(L, J, hz, hzz, hxxxx, bc='pbc', **params):
+    """Generates a Hamiltonian for a model with nearest neighbor x
+    interactions, a z-directional magnetic field, an x-x-x-x interaction,
+    and a z-z nearest neighbor interaction.
+    """
+    S = 1/2
+    s0, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
+    s0 = s0[0]
+    sx = sx[0]
+    sy = sy[0]
+    sz = sz[0]
+
+    Hxx = J * ou.gt(ou.gen_tnsk(ou.sk(sx, sx), L, S, n=2, bc=bc))
+    Hz = hz*ou.gt(ou.gen_tnsk(sz, L, S, n=1, bc=bc))
 
     # Non-integrable pieces
-    Hxxxx = hxxxx*ou.gt(ou.gen_tnsk(ou.sk(ou.sk(ou.sk(sx, sx), sx), sx), L, S,
-                        4, 0, 'pbc'))
-    Hzz = hzz*ou.gt(ou.gen_tnsk(ou.sk(sz, sz), L, S, 2, 0, 'pbc'))
+    Hxxxx = hxxxx * ou.gt(ou.gen_tnsk(ou.sk(ou.sk(ou.sk(sx, sx), sx), sx),
+                                      L, S, n=4, bc=bc))
+    Hzz = hzz * ou.gt(ou.gen_tnsk(ou.sk(sz, sz), L, S, n=2, bc=bc))
 
     H = Hxx + Hz + Hxxxx + Hzz
-
-    # DEBUG:
-    # Get Ising even states
-    inds = cu.s_val_inds(L, 1)
-    # np.where(ou.sz_string(L, diag=True) == 1)[0]
-
-    # momentum 0, even under inversion
-    P = cu.k_inv_proj(inds, L, S=1/2, k=0, inv_val=1)
-    P = cu.k_inv_proj(inds, L, S=1/2, k=0, inv_val=None)
-
-    # Checking that it is a symmetry of the Hamiltonian
-    squareproj = np.conj(P.T) @ P
-    t = np.max(np.abs((squareproj @ H - H @ squareproj)))
-
-    print(t)
-    raise AssertionError
 
     return H
 
@@ -104,33 +118,58 @@ def gen_zxxxxzz(L):
 # Default Models
 # ------------------------------------
 
-def gen_model(model, model_params, integrable=False):
-    assert model in valid_models, "Invalid model."
-    assert 'L' in model_params.keys(), "Need length to generate model."
-
+def default_params(model, L, integrable=False):
+    """Setting up default parameters for each of the models above."""
+    model_params = None
     if model == 'MFIM':
-        if model_params.keys() == {'L'}:
-            model_params = {'L': model_params['L'],
-                            'S': 1/2,
-                            'J': 1,
-                            'hx': (np.sqrt(5)+1)/4.,
-                            'hz': 0 if integrable else (np.sqrt(5)+5)/8.}
-        H = gen_mixedfieldising(**model_params)
-
+        model_params = {'L': L,
+                        'S': 1/2,
+                        'J': 1,
+                        'hx': (np.sqrt(5)+1)/4.,
+                        'hz': (np.sqrt(5)+5)/8. if not integrable else 0}
+        symmetries = {'spin_flip': False,
+                      'translation': True,
+                      'inversion': True,
+                      'u1': False}
     if model == 'XXZ':
-        if model_params.keys() == {'L'}:
-            model_params = {'L': model_params['L'],
-                            'S': 1/2,
-                            'a': 1,
-                            'b': 1.05,
-                            'j2': 0 if integrable else .3}
-        H = gen_xxz_nn(**model_params) + gen_xxz_nnn(**model_params)
-
+        model_params = {'L': L,
+                        'S': 1/2,
+                        'a': 1,
+                        'b': 1.05,
+                        'j2': .3 if not integrable else 0}
+        symmetries = {'spin_flip': True,
+                      'translation': True,
+                      'inversion': True,
+                      'u1': False}
     if model == 'ZXXXXZZ':
-        H = gen_zxxxxzz(model_params['L'])
-        model_params = {'L': model_params['L']}
+        model_params = {'L': L,
+                        'S': 1/2,
+                        'J': 1,
+                        'hz': .5,
+                        'hzz': .3,
+                        'hxxxx': .3 if not integrable else 0,
+                        }
+        symmetries = {'spin_flip': True,
+                      'translation': True,
+                      'inversion': True,
+                      'u1': False}
 
-    return H, model_params
+    return model_params, symmetries
+
+
+def gen_model(model, L, integrable=False):
+    assert model in valid_models, "Invalid model."
+
+    model_params, symmetries = default_params(model, L=L,
+                                              integrable=integrable)
+    if model == 'MFIM':
+        H = gen_mixedfieldising(**model_params)
+    if model == 'XXZ':
+        H = gen_xxz_nn(**model_params) + gen_xxz_nnn(**model_params)
+    if model == 'ZXXXXZZ':
+        H = gen_zxxxxzz(**model_params)
+
+    return H, model_params, symmetries
 
 
 # ===================================
@@ -138,24 +177,24 @@ def gen_model(model, model_params, integrable=False):
 # ===================================
 # Code to save and load Hamiltonians and eigensystems on spin chains.
 
-def save_projectors(L, S=1/2):
+def save_projectors(L, S=1/2, **symmetries):
     # label = 'fti' if L % 2 == 0 else 'ft'
-    cu.get_symm_proj(L, S, save_projfile=projfile(L, S))
+    cu.get_symm_proj(L, S, **symmetries,
+                     save_projfile=projfile(L, S, **symmetries))
     return
 
 
-def load_projectors(L, S=1/2):
-    return load_sparse_csr(projfile(L, S))
+def load_projectors(L, S, **symmetries):
+    return load_sparse_csr(projfile(L, S, **symmetries))
 
 
-def save_model(model, model_params):
+def save_default_model(model, L):
     """Saving information associated with the exact diagonalization via
     symmetry for the model model with the given model_params.
     """
-    H, model_params = gen_model(model, model_params)
-    L = model_params['L']
+    H, model_params, symmetries = gen_model(model, L=L)
 
-    assert os.path.isfile(projfile(L, S=1/2)),\
+    assert os.path.isfile(projfile(L, S=1/2, **symmetries)),\
         "Could not find projection operators. Try running "\
         + "```save_projectors(L)```"
 
@@ -164,7 +203,7 @@ def save_model(model, model_params):
                   save_systemfile=sysfile(model, **model_params),
                   save_eigenfile=eigenfile(model, **model_params),
                   # Optionally, load saved projectors:
-                  load_projfile=projfile(**model_params),
+                  load_projfile=projfile(**model_params, **symmetries),
                   )
 
     return

@@ -17,10 +17,10 @@ from pprint import pprint
 # Operator Utilities
 # ================================
 
+
 # ----------------------
 # Basic Operator Utils
 # ----------------------
-
 
 def sk(A, B, format='csr'):
     """A quick command for the sparse tensor product
@@ -327,8 +327,9 @@ def gen_invop(L, S):
 
 
 def gen_diagprojector(symvec, symval):
-    """Takes in a set of eigenvalues, symvec, associated with a symmetry
-    operator, and the eigenvalue, symval, onto which we would like to project.
+    """Takes in a set of eigenvalues, symvec, associated with an operator
+    acting on states in the computational basis, and the eigenvalue, symval,
+    onto which we would like to project.
     Returns a operator in the symmetry eigenbasis which projects onto the given
     symmetry value, symval.
 
@@ -488,7 +489,7 @@ def gen_Hbond_Hfield_zint(L, bc='obc'):
 def gen_tnsk(mat, L, S, n, k=0, bc='pbc'):
     """Translates the n-site operator mat on a spin S chain of length L, by a
     single site at a time. Produces a list of all possible translated
-    operators.
+    operators, multiplied by a phase consistent with a momentum k.
 
     If the boundary conditions are open, the operator is translated only up to
     the boundary. If the boundary conditions are periodic, the operator is
@@ -505,9 +506,9 @@ def gen_tnsk(mat, L, S, n, k=0, bc='pbc'):
         An integer describing the length of the spin chain.
     S : float
         An integer or half-integer defining the spin of the operators.
-    n : type
+    n : int
         Number of sites on which the matrix mat acts.
-    k : type
+    k : int
         The phase given to mat for every translation.
     bc : string
         Description of the boundary conditions used in generating the overall

@@ -21,6 +21,22 @@ from ising.utils.file_utils import save_sparse_csr, load_sparse_csr
 def time_evolve(state, evals, evecs, Ts):
     """Time evolves a state in a system with eigenvalues evals and eigenvectors
     evecs for times in the list Ts.
+
+    Parameters
+    ----------
+    state : np.array
+        Computational basis representation of the input state.
+    evals : list
+        Eigenvalues of the Hamiltonian used for time evolution.
+    evecs : list
+        Corresponding eigenstates of the Hamiltonian used for time evolution.
+    Ts : list
+        List of times for which the state (state) is time evolved.
+
+    Returns
+    -------
+    list
+        List of time evolved states, evolved for times in Ts.
     """
     states = [state]
     for t in Ts:
@@ -31,6 +47,28 @@ def time_evolve(state, evals, evecs, Ts):
 
 
 def op_ev_state(state, evals, evecs, Op, Ts=[0]):
+    """Operator expectation values of the operator (Op) in the state (state)
+    at times in Ts.
+
+    Parameters
+    ----------
+    state : np.array
+        Computational basis representation of the input state.
+    evals : list
+        Eigenvalues of the Hamiltonian used for time evolution.
+    evecs : list
+        Corresponding eigenstates of the Hamiltonian used for time evolution.
+    Op : matrix
+        Operator in whose eigenvalues we are interested.
+    Ts : list
+        List of times for which the state (state) is time evolved.
+
+    Returns
+    -------
+    list
+        List of time evolved operator expectation values, evolved for times in
+        Ts.
+    """
     states = time_evolve(state, evals, evecs, Ts)
     return np.sum(np.conj(states)*(Op.dot(states)), axis=0)
 
@@ -41,8 +79,6 @@ def op_ev_state(state, evals, evecs, Op, Ts=[0]):
 
 def op_ev(Op, vecs):
     """Returns the expectation value of the operator Op in the states vecs."""
-    print(np.shape(vecs))
-    print(np.shape(Op))
     return np.sum(np.conj(vecs)*(Op.dot(vecs)), axis=0)
 
 
@@ -92,6 +128,7 @@ def s_val_inds(L, s_val):
     """Assumes a lattice of length L of spin 1/2 particles.
     Returns indices associated with computational basis (z basis) states whose
     eigenvalue under a string of sigma_z operators is s_val.
+
     If s_val is None, returns indices associated with all z basis states.
     """
     if s_val in [1, -1]:
@@ -164,8 +201,8 @@ def k_proj(ind, L, S, k=0):
                 break
             elif this_ind == n:
                 phase = 2 * np.pi * k / L
-                # Phase associated with momentum k
-                # Making sure phase * d is a multiple of 2pi:
+                # Phase associated single site translation for momentum k
+                # Making sure phase * d is a multiple of 2pi (see tval below):
                 if np.abs(np.round(k*d/L) - k*d/L) < tol:
                     # Skip last element of list, to not repeat original state:
                     tjind.append(trans_ind[:-1])
@@ -179,6 +216,8 @@ def k_proj(ind, L, S, k=0):
                     # Value of projection matrix at given i and j:
                     tval.append((np.exp(1j * phase) ** np.arange(d))
                                 / np.sqrt(d))
+                    # The form of these elements is why we require that
+                    # phase * d is a multiple of 2pi.
                 break
 
     # If there are no states to project onto:
@@ -227,12 +266,12 @@ def k_inv_proj(ind, L, S, k=0, inv_val=1):
         A projector onto the eigenstates of translation with momentum k
         associated with the pure states represented by the elements of ind.
     """
-    assert k == 0 or k == L/2, \
-        "Inversion symmetry only commutes with translation symmetry in the "\
-        + "k=0 and k=pi sectors"
-
     if inv_val is None:
         return k_proj(ind, L, S, k=k)
+
+    assert k == 0 or k == L/2, \
+        "Inversion symmetry only commutes with translation symmetry "\
+        + "in the k=0 and k=pi sectors."
 
     tol = .1/L
     rep_dim = int(np.round(2*S+1, 1))
@@ -242,11 +281,12 @@ def k_inv_proj(ind, L, S, k=0, inv_val=1):
     counter = 0
 
     for n in ind:
-        # Looping over relevant states
-        # Beginning with transformation into binary string
+        # Looping over relevant states.
+        # Beginning with transformation into rep_dim-ary string
+        # (e.g. binary string for spin 1/2 chain).
         b = np.base_repr(n, base=rep_dim).zfill(L)
 
-        # List whose members are all states in a translation class
+        # List whose members are all states in a translation class.
         trans_ind = [n]
 
         for d in range(1, L+1):
@@ -261,8 +301,8 @@ def k_inv_proj(ind, L, S, k=0, inv_val=1):
                 break
             elif this_ind == n:
                 phase = 2 * np.pi * k / L
-                # Phase associated with momentum k
-                # Making sure phase * d is a multiple of 2pi:
+                # Phase associated single site translation for momentum k
+                # Making sure phase * d is a multiple of 2pi (see tval below):
                 if np.abs(np.round(k*d/L) - k*d/L) < tol:
                     # Setting up list for translation class states
                     # on inverted lattice:
@@ -271,13 +311,14 @@ def k_inv_proj(ind, L, S, k=0, inv_val=1):
                         # Inverting states and adding them to inv_ind
                         inv_string = np.base_repr(j, rep_dim).zfill(L)[::-1]
                         inv_ind.append(int(inv_string, rep_dim))
-                    # If the translation class is invariant under inversion:
+                    # If the translation class is not invariant under
+                    # inversion, create appropriate translation + inversion
+                    # eigenstates.
                     if not set(inv_ind).issubset(trans_ind[:-1]):
-                        # Creating translation + inversion eigenstates.
                         # Since there will be another translation class with
                         # the same end projector associated with inv_ind,
                         # we arbitrarily pick max(ind) > max(inv_ind) here.
-                        if max(ind) > max(inv_ind):
+                        if max(trans_ind) > max(inv_ind):
                             if inv_val == 1:
                                 tjind.append(trans_ind[:-1])
                                 tjind.append(inv_ind)
@@ -320,8 +361,9 @@ def k_inv_proj(ind, L, S, k=0, inv_val=1):
                             if inv_val == 1:
                                 if (first_inv_ind[0] % 2) == 0:
                                     # If the first inverse is on an even site,
-                                    # the associated phase when k=L/2 is 1.
-                                    # In this case, inversion can have eval 1.
+                                    # the associated phase at this inverted
+                                    # site when k=L/2 is
+                                    # exp(2*pi*site/2) = 1 = inversion eval.
                                     tjind.append(trans_ind[:-1])
                                     tval.append(
                                         (np.exp(1j * phase) ** np.arange(d))
@@ -331,8 +373,9 @@ def k_inv_proj(ind, L, S, k=0, inv_val=1):
                             if inv_val == -1:
                                 if (first_inv_ind[0] % 2) == 1:
                                     # If the first inverse is on an odd site,
-                                    # the associated phase when k=L/2 is -1.
-                                    # In this case, inversion can have eval -1.
+                                    # the associated phase at this inverted
+                                    # site when k=L/2 is
+                                    # exp(2*pi*site/2) = -1 = inversion eval.
                                     tjind.append(trans_ind[:-1])
                                     tval.append(
                                         (np.exp(1j * phase) ** np.arange(d))
@@ -387,9 +430,9 @@ def get_symm_proj(L, S,
         projectors, and whose keys are lists containing the eigenvalues of the
         associated symmetries.
     """
-    # if L % 2 == 1 and inversion is True:
-    #     print("Cannot invert odd-length spin chain.")
-    #     inversion = False
+    if L % 2 == 1 and inversion is True:
+        print("Cannot invert odd-length spin chain.")
+        inversion = False
 
     # Encoding eigenvalues of symmetries
     spin_flip_vals = [1, -1] if spin_flip else [None]
@@ -429,6 +472,7 @@ def get_symm_proj(L, S,
               + "to the identity.")
         print("The maximum matrix element of |1 - sum_i P_i| is "
               + str(np.max(np.abs(delta_sum_proj))))
+        # return
 
     if save_projfile is not None:
         save_sparse_csr(save_projfile, **proj_dict)
@@ -463,18 +507,14 @@ def diagonalize_subspaces(H, proj_dict,
         P2 = np.conj(P.T) @ P
 
         non_comm = np.max(np.abs((P2 @ H - H @ P2)))
-        # DEBUG:
-        # This is getting called for even and odd lattice sizes
-        # Maybe try changing sx <-> sz?
-        # Otherwise, compare to Nick code, introduce Nick model, keep trying
         try:
             assert non_comm < 1e-10
-            print("DEBUG: Great job! non_comm is "+str(non_comm))
         except AssertionError:
-            print("L: " + str(L))
-            # print("Projector P onto the symmetry sector "+str(sector)
-            #       + " does not commute with H.")
-            # print("The maximum matrix element of |[H, P]| is "+str(non_comm))
+            print("For system size " + str(L) + ", projector P onto the "
+                  + "symmetry sector " + str(sector)
+                  + " does not commute with H.")
+            print("The maximum matrix element of |[H, P]| is "+str(non_comm))
+            # return
 
         # Hamiltonian in subspace
         H_proj = P @ H @ np.conj(P.T)

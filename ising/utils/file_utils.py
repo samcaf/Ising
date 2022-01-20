@@ -11,13 +11,26 @@ valid_models = ['MFIM', 'XXZ', 'ZXXXXZZ']
 isingPath = '/Users/sam/Documents/Research/Ising'
 storagePath = isingPath+'/operators/'
 figPath = isingPath+'/figures/'
+figBasicPath = isingPath+'/figures/basic/'
 
 
-def projfile(L, S, label='ft', **params):
-    # Standardized filename to store projection operators.
-    # Default type of projectors are 'fti':
-    # (spin) flip, translation and inversion.
+def projfile(L, S, spin_flip, translation, inversion, u1,
+             **params):
+    """Standardized filename to store projection operators."""
+    # Extra label setup, encoding symmetries
+    label = ''
+    if spin_flip:
+        label += 'f'
+    if translation:
+        label += 't'
+    if inversion:
+        label += 'i'
+    if u1:
+        label += 'u'
+
+    # File setup
     file = 'projectors_'+label+'_L{}_S{}'.format(L, S)+'.npz'
+    # Simplifying the filename for default spin 1/2
     if S == 1/2:
         file = 'projectors_'+label+'_L{}'.format(L)+'.npz'
     return storagePath+file

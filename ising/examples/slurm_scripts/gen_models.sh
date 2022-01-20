@@ -1,0 +1,60 @@
+#!/bin/bash
+#SBATCH --job-name gen_models
+#SBATCH --exclusive
+#SBATCH -c 10
+#SBATCH --mem=0
+#SBATCH -o logs/zlog-%j.out
+#SBATCH -e logs/zlog-%j.err
+#SBATCH --constraint=xeon-p8
+
+###################################
+# Preparation
+###################################
+# ============================
+# Supercloud Preparation:
+# ============================
+# Preparation for running in supercloud cluster:
+module load anaconda/2021b
+
+# Linking log files to more precisely named logs
+logfile='gen_models'
+ln -f logs/zlog-${SLURM_JOB_ID}.out logs/$logfile.out.${SLURM_JOB_ID}
+ln -f logs/zlog-${SLURM_JOB_ID}.err logs/$logfile.err.${SLURM_JOB_ID}
+
+# ============================
+# Path preparation:
+# ============================
+# Should be run from the root folder /Ising
+
+# -------------------------
+# PYTHONPATH:
+# -------------------------
+# Adding the Ising directory to the PYTHONPATH
+# Must be used in the directory /path/to/Ising/
+chmod +x examples/slurm_scripts/prepare_path.sh
+./examples/slurm_scripts/prepare_path.sh
+
+
+###################################
+# Beginning to log workflow
+###################################
+printf "##################################################
+# Generating Projectors, Models, and Hamiltonians
+##################################################"
+printf "# ============================
+# Date: "`date '+%F'`"-("`date '+%T'`")
+# ============================"
+python examples/params.py
+
+printf "
+##################################################
+"
+python examples/gen_models.py
+
+# Remove duplicate log files:
+rm logs/zlog-${SLURM_JOB_ID}.out
+rm logs/zlog-${SLURM_JOB_ID}.err
+
+printf "# ============================
+# End time: "`date '+%F'`"-("`date '+%T'`")
+# ============================"
