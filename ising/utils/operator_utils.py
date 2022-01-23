@@ -90,6 +90,20 @@ def gen_op_prod(op_list):
     return P
 
 
+def comm(op1, op2, toarray=True):
+    comm = op1@op2 - op2@op1
+    if toarray:
+        comm = comm.toarray()
+    return comm
+
+
+def acomm(op1, op2, toarray=True):
+    acomm = op1@op2 + op2@op1
+    if toarray:
+        acomm = acomm.toarray()
+    return acomm
+
+
 # ----------------------
 # Spin Operators
 # ----------------------
@@ -237,6 +251,12 @@ def gen_s0sxsysz(L, S=1/2):
         s0_list.append(id)
 
     return s0_list, sx_list, sy_list, sz_list
+
+
+def fermion_number(L):
+    """Fermion number on a 1D spin chain with spin 1/2."""
+    F_1site = sparse.diags([1, 0], 0)
+    return gen_tnsk(F_1site, L, S=1/2, n=1)
 
 
 # ----------------------
@@ -522,6 +542,7 @@ def gen_tnsk(mat, L, S, n, k=0, bc='pbc'):
         sites.
 
     """
+    assert L >= n, "Given operator is bigger than the lattice!"
     rep_dim = int(np.round(2*S+1, 1))
 
     # Initializing list of translated operators.
