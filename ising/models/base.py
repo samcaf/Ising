@@ -1,18 +1,13 @@
 # Basic imports
 import numpy as np
-import os.path
 
 # Local imports
 import ising.utils.operator_utils as ou
-import ising.utils.calculation_utils as cu
-
-# File utils
-from ising.utils.file_utils import load_sparse_csr
-from ising.utils.file_utils import valid_models, projfile, sysfile, eigenfile
 
 # ===================================
 # Models
 # ===================================
+base_models = ['MFIM', 'XXZ', 'ZXXXXZZ']
 
 
 # ------------------------------------
@@ -25,10 +20,8 @@ def gen_mixedfieldising(L, J, hz, hx, bc='pbc', **params):
     """
     # Pauli Matrices
     S = 1/2
-    s0, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
-    s0 = s0[0]
+    _, sx, _, sz = ou.gen_s0sxsysz(L=1, S=S)
     sx = sx[0]
-    sy = sy[0]
     sz = sz[0]
 
     # Interactions
@@ -48,11 +41,9 @@ def gen_mixedfieldising(L, J, hz, hx, bc='pbc', **params):
 def gen_xxz(L, a, b, bc='pbc', **params):
     """Generates a Hamiltonian for the xxz model with nearest neighbor
     interactions."""
-    s0, sx, sy, sz = ou.gen_s0sxsysz(L)
     # Pauli Matrices
     S = 1/2
-    s0, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
-    s0 = s0[0]
+    _, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
     sx = sx[0]
     sy = sy[0]
     sz = sz[0]
@@ -73,11 +64,8 @@ def gen_xxz_nnn(L, j2, bc='pbc', **params):
     """
     # Pauli Matrices
     S = 1/2
-    s0, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
-    s0 = s0[0]
+    _, sx, _, _ = ou.gen_s0sxsysz(L=1, S=S)
     sx = sx[0]
-    sy = sy[0]
-    sz = sz[0]
 
     # Interactions
     # (Of the form [sx*1*sx])
@@ -159,7 +147,7 @@ def default_params(model, L, integrable=False):
 
 
 def gen_model(model, L, integrable=False):
-    assert model in valid_models, "Invalid model."
+    assert model in base_models, "Invalid model."
 
     model_params, symmetries = default_params(model, L=L,
                                               integrable=integrable)
@@ -171,62 +159,3 @@ def gen_model(model, L, integrable=False):
         H = gen_zxxxxzz(**model_params)
 
     return H, model_params, symmetries
-
-
-# ===================================
-# Saving and Loading Models
-# ===================================
-# Code to save and load Hamiltonians and eigensystems on spin chains.
-
-def save_projectors(L, S=1/2, **symmetries):
-    # label = 'fti' if L % 2 == 0 else 'ft'
-    cu.get_symm_proj(L, S, **symmetries,
-                     save_projfile=projfile(L, S, **symmetries))
-    return
-
-
-def load_projectors(L, S, **symmetries):
-    return load_sparse_csr(projfile(L, S, **symmetries))
-
-
-def save_default_model(model, L):
-    """Saving information associated with the exact diagonalization via
-    symmetry for the model model with the given model_params.
-    """
-    H, model_params, symmetries = gen_model(model, L=L)
-
-    assert os.path.isfile(projfile(L, S=1/2, **symmetries)),\
-        "Could not find projection operators. Try running "\
-        + "```save_projectors(L)```"
-
-    # Diagonalize with symmetries, save results
-    cu.eigh_symms(H, L, S=1/2,
-                  save_systemfile=sysfile(model, **model_params),
-                  save_eigenfile=eigenfile(model, **model_params),
-                  # Optionally, load saved projectors:
-                  load_projfile=projfile(**model_params, **symmetries),
-                  )
-
-    return
-
-
-def load_model(model, model_params={}):
-    """Loading Hamiltonian and eigensystem information associated with the
-    exact diagonalization via symmetry for the model model with the given
-    model_params.
-
-    To get the full Hamiltonian and eigenvalues, you may use:
-    ```
-    # Loading model info
-    system_dict, eigen_dict = load_model(model, model_params)
-
-    # Defining Hamiltonian and eigensystem
-    H = system_dict['H']
-    evals, evecs = eigen_dict['evals'], eigen_dict['evecs']
-    ```
-    """
-    # Fetching information about the system
-    system_dict = load_sparse_csr(sysfile(model, **model_params))
-    eigen_dict = np.load(eigenfile(model, **model_params), allow_pickle=True)
-
-    return system_dict, eigen_dict

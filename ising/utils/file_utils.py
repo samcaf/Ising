@@ -12,9 +12,12 @@ storagePath = isingPath+'/operators/'
 figPath = isingPath+'/figures/'
 figBasicPath = isingPath+'/figures/basic/'
 
-valid_models = ['MFIM', 'XXZ', 'ZXXXXZZ']
+valid_models = ['MFIM', 'XXZ', 'ZXXXXZZ', 'SUSY']
+
+
 def check_valid_models(model):
     assert model in valid_models, "Invalid model."
+
 
 def projfile(L, S, spin_flip, translation, inversion, u1,
              **params):
