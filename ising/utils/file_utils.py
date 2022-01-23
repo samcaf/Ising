@@ -2,17 +2,19 @@ import numpy as np
 from scipy.sparse import csr_matrix, issparse
 import re
 
-valid_models = ['MFIM', 'XXZ', 'ZXXXXZZ']
 
 # ---------------
 # Storage Files
 # ---------------
 # Local directory for storage
-isingPath = '/Users/sam/Documents/Research/Ising'
+isingPath = '/home/gridsan/sfard/Projects/Ising'
 storagePath = isingPath+'/operators/'
 figPath = isingPath+'/figures/'
 figBasicPath = isingPath+'/figures/basic/'
 
+valid_models = ['MFIM', 'XXZ', 'ZXXXXZZ']
+def check_valid_models(model):
+    assert model in valid_models, "Invalid model."
 
 def projfile(L, S, spin_flip, translation, inversion, u1,
              **params):
@@ -38,7 +40,7 @@ def projfile(L, S, spin_flip, translation, inversion, u1,
 
 def sysfile(model, **params):
     # Standardized filename to store Hamiltonian and subspace Hamiltonians.
-    assert model in valid_models, "Invalid model."
+    check_valid_models(model)
     # All models we are considering now are spin 1/2
     param_info = ['_'+f+str(params[f]) for f in params.keys() if f != 'S']
     param_info = ''.join(map(str, param_info))
@@ -47,7 +49,7 @@ def sysfile(model, **params):
 
 def eigenfile(model, **params):
     # Standardized filename to store eigensystem and subspace eigensystems.
-    assert model in valid_models, "Invalid model."
+    check_valid_models(model)
     # All models we are considering now are spin 1/2
     param_info = ['_'+f+str(params[f]) for f in params.keys() if f != 'S']
     param_info = ''.join(map(str, param_info))

@@ -13,6 +13,8 @@ from ising.utils.file_utils import save_sparse_csr, load_sparse_csr
 # 1D Spin Chain Calculation Utilities
 ########################################
 
+DEBUG = False
+
 
 # ================================
 # Time evolution
@@ -462,17 +464,19 @@ def get_symm_proj(L, S,
                 proj = k_proj(s_inds, L, S, k=k_val)
                 proj_dict[str(sector)] = proj
 
-    # Ensuring that the sum of projectors behaves like the identity
-    sum_proj = sum([np.conj(p.T) @ p.toarray() for p in proj_dict.values()])
-    delta_sum_proj = sum_proj - np.eye(int(2*S+1)**L)
-    try:
-        assert np.max(np.abs(delta_sum_proj)) < 1e-10
-    except AssertionError:
-        print("Projectors for length-"+str(L)+"-chain do not add up "
-              + "to the identity.")
-        print("The maximum matrix element of |1 - sum_i P_i| is "
-              + str(np.max(np.abs(delta_sum_proj))))
-        # return
+    if DEBUG:
+        # Takes a lot of memory due to dense matrix intermediates.
+        # Ensuring that the sum of projectors behaves like the identity
+        sum_proj = sum([np.conj(p.T) @ p.toarray() for p in proj_dict.values()])
+        delta_sum_proj = sum_proj - np.eye(int(2*S+1)**L)
+        try:
+            assert np.max(np.abs(delta_sum_proj)) < 1e-10
+        except AssertionError:
+            print("Projectors for length-"+str(L)+"-chain do not add up "
+                  + "to the identity.")
+            print("The maximum matrix element of |1 - sum_i P_i| is "
+                + str(np.max(np.abs(delta_sum_proj))))
+            # return
 
     if save_projfile is not None:
         save_sparse_csr(save_projfile, **proj_dict)
@@ -520,6 +524,9 @@ def diagonalize_subspaces(H, proj_dict,
         H_proj = P @ H @ np.conj(P.T)
         evals, evecs = np.linalg.eigh(H_proj.toarray())
 
+        # DEBUG:
+        # Add methods for including fewer eigenvalues/vectors
+
         # Storing the eigensystem
         eval_dict[sector] = evals
         evec_dict[sector] = evecs
@@ -530,7 +537,8 @@ def diagonalize_subspaces(H, proj_dict,
 def eigh_symms(H, L, S,
                load_projfile=None,
                save_systemfile=None,
-               save_eigenfile=None):
+               save_eigenfile=None,
+               eigen_subsystem=False):
     """Diagonalize the operator H by dividing into symmetry sectors and
     finding the eigensystem of each.
     Saves the subspace Hamiltonians and eigensystems in dictionaries if
@@ -570,6 +578,9 @@ def eigh_symms(H, L, S,
                   'subspace evals': sub_evals,
                   'subspace evecs': sub_evals
                   }
+    if eigen_subsystem:
+        eigen_dict['subspace evals'] = sub_evals
+        eigen_dict['subspace evecs'] = sub_evecs
 
     # Saving if save files are specified:
     if save_systemfile is not None:

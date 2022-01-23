@@ -14,30 +14,12 @@ A python toolbox for calculations on one dimensional quantum spin chains. Includ
 
 
 ## <a name="pathvars"></a> Path Variables
-If you want to run code out of the Ising folder, don't forget to add Ising to your path variable.
-
-For me, one way to do this is by adding the following to my .bash_profile:
+If you want to run code out of the Ising folder, don't forget to add Ising to your path variable. This can be achieved with
 ```
-_path_append() {
-    if [ -n "$2" ]; then
-        case ":$(eval "echo \$$1"):" in
-            *":$2:"*) :;;
-            *) eval "export $1=\${$1:+\"\$$1:\"}$2" ;;
-        esac
-    else
-        case ":$PATH:" in
-            *":$1:"*) :;;
-            *) export PATH="${PATH:+"$PATH:"}$1" ;;
-        esac
-    fi
-}
-
-_path_append PATH /path/to/Ising
-PYTHONPATH=$PATH
-export PYTHONPATH
+cd /Path/to/Ising/
+chmod +x prepare_path.sh
+./prepare_path.sh
 ```
-Also, in ising/utils/file_utils.py, change the variable isingPath to the relevant '/path/to/Ising' directory.
-
 
 ## <a name="maintainers"></a> Maintainers
 
