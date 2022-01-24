@@ -549,9 +549,9 @@ def eigh_symms(H, L, S,
     """
     # Finding symmetry projectors and diagonalizing H in symmetry sectors
     if load_projfile is None:
-        proj = get_symm_proj(L, S)
+        proj_dict = get_symm_proj(L, S)
     else:
-        proj = load_sparse_csr(load_projfile)
+        proj_dict = load_sparse_csr(load_projfile)
     sub_evals, sub_evecs = diagonalize_subspaces(H, proj, L, S)
 
     # Adding additional options for playing with memory requirements
@@ -564,7 +564,7 @@ def eigh_symms(H, L, S,
             all_evals = np.concatenate((all_evals, sub_evals[sector]))
 
             # Putting the eigenvectors into the full Hilbert space
-            P_hc = np.conj(proj[sector].T)
+            P_hc = np.conj(proj_dict[sector].T)
             sector_evecs = np.array([P_hc @ evec
                                      for evec in sub_evecs[sector]])
             if i == 0:
@@ -583,8 +583,8 @@ def eigh_symms(H, L, S,
     system_dict = {'H': H,
                    'H_proj': {sector: P @ H @ np.conj(P.T)
                               for sector, P in
-                              zip(proj.keys(),
-                                  [proj[f] for f in proj.keys()])}
+                              zip(proj_dict.keys(),
+                                  [proj_dict[f] for f in proj_dict.keys()])}
                    }
 
     # eigen_dict = {'evals': all_evals,
@@ -600,14 +600,50 @@ def eigh_symms(H, L, S,
         np.savez(save_eigenfile, **eigen_dict)
 
 
-def projfile(L, S, label='fti', **params):
-    # Standardized filename to store projection operators.
-    # Default type of projectors are 'fti':
-    # (spin) flip, translation and inversion.
-    file = 'projectors_'+label+'_L{}_S{}'.format(L, S)+'.npz'
-    if S == 1/2:
-        file = 'projectors_'+label+'_L{}'.format(L)+'.npz'
-    return file
+def esys_from_sub_dicts(proj_dict, eigen_dict):
+    """A method to retrieve a full eigensystem from orthogonal
+    sub-eigensystems.
+    
+    Takes in dictionaries encoding the projectors into a set of subspaces
+    and the eigensystems of the subspaces, respectively.
+
+    Returns lists containing the eigenvalues and eigenvectors of
+    the full system, respectively.
+    """
+    # Getting sub-eigensystems 
+    sub_evals = eigen_dict['subspace evals']
+    sub_evecs = eigen_dict['subspace evecs']
+
+    # Concatenating results for all subspaces
+    all_evals = []
+    all_evecs = []
+    for i, sector in enumerate(sub_evals.keys()):
+        all_evals = np.concatenate((all_evals, sub_evals[sector]))
+
+        # Putting the eigenvectors into the full Hilbert space
+        P_hc = np.conj(proj_dict[sector].T)
+        sector_evecs = np.array([P_hc@v for v in sub_evecs[sector]])
+        if i == 0:
+            all_evecs = sector_evecs
+        else:
+            all_evecs = np.concatenate((all_evecs, sector_evecs))
+
+    return all_evals, all_evecs
+
+
+def esys_from_sub_files(load_projfile, load_eigenfile):
+    """A method to retrieve a full eigensystem from orthogonal
+    sub-eigensystems.
+    
+    Takes in files storing the projectors into a set of subspaces and
+    the eigensystems of the subspaces, respectively.
+
+    Returns lists containing the eigenvalues and eigenvectors of
+    the full system, respectively.
+    """
+    proj_dict = load_sparse_csr(load_projfile)
+    eigen_dict = np.load(load_eigenfile, allow_pickle=True)
+    return esys_from_sub_dicts(proj_dict, eigen_dict)
 
 
 # ================================

@@ -14,22 +14,36 @@ from examples.params import Ls, MODELS
 for model in MODELS:
     sigmaOp_vec = []
     for L in Ls:
-        # Get stored eigensystem
-        model_params, _ = models.default_params(model, L)
+        # ----------------------
+        # Setting up model
+        # ----------------------
+        model_params, symmetries = models.default_params(model, L=L,
+                                                         integrable=False)
+        # Retrieving stored information
+        proj_dict = load_sparse_csr(projfile(L, S=1/2, **symmetries))
         eigen_dict = np.load(eigenfile(model, **model_params),
                              allow_pickle=True)
-        evals, evecs = eigen_dict['evals'], eigen_dict['evecs']
-        sub_evals = eigen_dict['subspace evals'][()]
 
-        # Eigenvalue distribution
+        # Getting eigensystems
+        sub_evals = eigen_dict['subspace evals'][()]
+        sub_evecs = eigen_dict['subspace evecs'][()]
+        all_evals, all_evecs = esys_from_sub_dicts(proj_dict, eigen_dict)
+
+        # ----------------------
+        # Plotting eigenvalue distribution
+        # ----------------------
         ipu.plot_evaldist(evals, path=figBasicPath+model
                           + '_evaldist_{}sites.pdf'.format(L))
 
-        # Level spacing
+        # ----------------------
+        # Plotting level spacing
+        # ----------------------
+        # Setting up for multiple pdfs (for different symmetry sectors)
+        # in one file
         lvlfile = backend_pdf.PdfPages(
                     figBasicPath+model+'_lvlspace_{}sites.pdf'.format(L))
 
-        # Overall level spacing distribution
+        # Plotting a histogram of the level spacing distribution
         fig = ipu.plot_lvlspace(evals, ensemble='go', nbins=50,
                                 title='Full System')
         lvlfile.savefig(fig)
@@ -43,7 +57,9 @@ for model in MODELS:
 
         lvlfile.close()
 
+        # ----------------------
         # Plotting features of eigenstate expectation values
+        # ----------------------
         _, _, _, sz = ou.gen_s0sxsysz(L)
         Op = sz[L//2]
         ipu.plot_eev_density(L, Op, evals, evecs,
@@ -59,8 +75,12 @@ for model in MODELS:
                                       path=figBasicPath+model
                                       + '_canoncomp_{}sites.pdf'.format(L))
 
+    # ----------------------
+    # Microcanonical fluctuations:
+    # ----------------------
     Ls_str = ''.join(map(str, Ls))
     fluct_path = figBasicPath+model+'_therm_comp_fluctuations'+Ls_str+'.pdf'
-
-    # Microcanonical fluctuations:
+    
+    # Plotting fluctuations of operator expectation values
+    # relative to the microcanonical ensemble
     ipu.plot_microcanonical_fluctuations(Ls, sigmaOp_vec, path=fluct_path)
