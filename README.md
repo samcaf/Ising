@@ -4,6 +4,8 @@
 
 A python toolbox for calculations on one dimensional quantum spin chains. Includes model Hamiltonians, operators, symmetries, spectrum analysis, entropy calculations, and examples.
 
+Special thanks to Nick O'Dea, who provided versions of a great deal of this code as well as a great deal guidance as I adjusted it. It is my understanding that O'Dea developed some of the code that he gave me in part in collaboration with Vedika Khemani. I am extremely grateful to both of them!
+
 
 ## Table of Contents
 
