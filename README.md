@@ -23,7 +23,7 @@ chmod +x prepare_path.sh
 ```
 
 ## <a name="pathvars"></a> Acknowledgments
-My deep thanks to Nick O'Dea, who generously provided a great deal of this code as well as a great deal of guidance as I adjusted it. My main adjustments to O'Dea's code was in commenting and formatting of data. It is my understanding that O'Dea developed the code that he gave me in part due to collaboration with Vedika Khemani. I am extremely grateful to both of them!
+My deep thanks to Nick O'Dea, who generously provided a great deal of this code as well as a great deal of guidance as I adjusted it. My main adjustments to O'Dea's code were in commenting and formatting of data. It is my understanding that O'Dea developed the code that he gave me in part due to collaboration with Vedika Khemani. I am extremely grateful to both of them!
 
 ## <a name="maintainers"></a> Maintainers
 
