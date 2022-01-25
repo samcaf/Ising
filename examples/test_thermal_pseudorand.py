@@ -2,14 +2,38 @@
 # coding: utf-8
 from __future__ import absolute_import
 import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib.backends.backend_pdf as backend_pdf
 
 # Local imports
 from ising.utils.file_utils import figLargeOpsPath, eigenfile
 import ising.utils.operator_utils as ou
+import ising.utils.calculation_utils as cu
 import ising.utils.ising_plot_utils as ipu
 import ising.models.base as models
 from examples.params import Ls, MODELS
+
+
+def plot_opstring(L, Op, k, evals, evecs):
+    op_eev_mid, op_ev_mc, sigmaOp = cu.op_eev_fluct(L, Op, evals, evecs,
+                                                    deltaE=.025*L,
+                                                    spectrum_center=1/2,
+                                                    spectrum_width=20)
+
+    fig = plt.figure()
+    plt.plot(op_eev_mid, '.', label='Eigenstate')
+    plt.plot(op_ev_mc, label='Microcanonical')
+    plt.title(r'Comparison to Microcanonical, $L=%d$' % L, fontsize=16)
+    plt.title(r'$L=%d,~\Delta E=0.025L,$' % L
+              + r'~$\mathcal{O}=(S^y)^{\otimes %d}\$' % k,
+              fontsize=16)
+    plt.ylim(-0.5, 0.5)
+    plt.legend(fontsize=16)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.tight_layout()
+
+    return fig, op_eev_mid, op_ev_mc, sigmaOp
 
 
 def plot_operators():
@@ -43,13 +67,17 @@ for model in MODELS:
         # Finding and Plotting EEVs
         # -----------------
         # Setting up pdf with many plots
-        ystring_file = backend_pdf.PdfPages(figLargeOpsPath+model+'_ystringeev'
-                                            + '_{}sites.pdf'.format(L))
+        ystring_file = backend_pdf.PdfPages(figLargeOpsPath+model+'_ystringev'
+                                            + 'fixed_{}sites.pdf'.format(L))
         for k in range(L):
             y_string = central_ops[k]['y'*k]
-            fig, eev, eev_mc, sigmaOp = ipu.plot_microcanonical_comparison(
-                                        L, y_string, evals, evecs,
-                                        deltaE=.025*L)
+            fig, eev, ev_mc, sigmaOp = ipu.plot_opstring(L, y_string, k,
+                                                         evals, evecs)
+            ystring_file.savefig(fig)
+
+            op_eevs_ys.append(eev)
+            op_ev_mc_ys.append(ev_mc)
+            op_flucts_ys.append(sigmaOp)
 
             """
             all_op_eevs_k = []
@@ -77,6 +105,16 @@ for model in MODELS:
             all_op_ev_mcs.append(all_op_ev_mcs_k)
             all_op_flucts.append(all_op_flucts_k)
             """
+        ystring_file.close()
+
+        fig = plt.figure()
+        for k in range(L):
+            fig.scatter([k]*len(op_eevs_ys), op_eevs_ys[k])
+        fig.plot(range(L), op_ev_mc_ys)
+        fig.fill_between(x=range(L), y1=op_ev_mc_ys+op_flucts_ys,
+                         y2=op_ev_mc_ys-op_flucts_ys)
+
+        fig.savefig(figLargeOpsPath+model+'_ystringev_{}sites.pdf'.format(L))
 
         # Store these lists in a dictionary of some sort
 
@@ -102,4 +140,3 @@ for model in MODELS:
             fig_eev_all[0].scatter(k, all_op_eevs[k])
             fig_flucts_all[0].scatter(k, all_op_flucts[k])
         """
-

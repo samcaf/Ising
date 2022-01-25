@@ -11,6 +11,7 @@ isingPath = '/home/gridsan/sfard/Projects/Ising'
 storagePath = isingPath+'/operators/'
 figPath = isingPath+'/figures/'
 figBasicPath = isingPath+'/figures/basic/'
+figLargeOpsPath = isingPath+'/figures/largeops/'
 
 valid_models = ['MFIM', 'XXZ', 'ZXXXXZZ', 'SUSY']
 

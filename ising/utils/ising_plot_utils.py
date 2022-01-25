@@ -38,10 +38,9 @@ def plot_evaldist(evals, path=None):
 
     plt.tight_layout()
 
-    if path is None:
-        plt.show()
-    else:
+    if path is not None:
         fig.savefig(path, format='pdf')
+    return fig
 
 
 # -------------------
@@ -93,10 +92,9 @@ def plot_eev_density(L, Op, evals, evecs, path=None):
 
     plt.tight_layout()
 
-    if path is None:
-        plt.show()
-    else:
+    if path is not None:
         fig.savefig(path, format='pdf')
+    return fig
 
 # -------------------
 # Microcanonical Comparison
@@ -106,14 +104,14 @@ def plot_eev_density(L, Op, evals, evecs, path=None):
 def plot_microcanonical_comparison(L, Op, evals, evecs, deltaE,
                                    spectrum_center=1/2, spectrum_width=20,
                                    path=None):
-    op_eev_mid, op_eev_mc, sigmaOp = cu.op_eev_fluct(L, Op, evals, evecs,
-                                                     deltaE,
-                                                     spectrum_center,
-                                                     spectrum_width)
+    op_eev_mid, op_ev_mc, sigmaOp = cu.op_eev_fluct(L, Op, evals, evecs,
+                                                    deltaE,
+                                                    spectrum_center,
+                                                    spectrum_width)
 
     fig = plt.figure()
     plt.plot(op_eev_mid, '.', label='Eigenstate')
-    plt.plot(op_eev_mc, label='Microcanonical')
+    plt.plot(op_ev_mc, label='Microcanonical')
     plt.title(r'Comparison to Microcanonical, $L=%d$' % L, fontsize=16)
     plt.title(r'L=%d, $\Delta E=0.025L,~\mathcal{O}=S^z_{L/2}$' % L,
               fontsize=16)
@@ -124,11 +122,9 @@ def plot_microcanonical_comparison(L, Op, evals, evecs, deltaE,
     plt.tight_layout()
 
     if path is None:
-        plt.show()
-    else:
         fig.savefig(path, format='pdf')
 
-    return np.mean(sigmaOp)
+    return fig, op_eev_mid, op_ev_mc, sigmaOp
 
 
 # Fluctuations
@@ -149,10 +145,9 @@ def plot_microcanonical_fluctuations(Ls, sigmaOp_vec, path=None):
     plt.yticks(fontsize=16)
     plt.tight_layout()
 
-    if path is None:
-        plt.show()
-    else:
+    if path is not None:
         fig.savefig(path, format='pdf')
+    return fig
 
 
 # -------------------
@@ -198,10 +193,9 @@ def plot_canonical_comparison(L, Op, evals, evecs, path=None):
     plt.yticks(fontsize=16)
     plt.tight_layout()
 
-    if path is None:
-        plt.show()
-    else:
+    if path is not None:
         fig.savefig(path, format='pdf')
+    return fig
 
 
 # DEBUG:
