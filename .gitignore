@@ -146,5 +146,6 @@ unused_boiler_code.py
 *.npz
 
 # Log files
+logs/
 *.out
 *.err
