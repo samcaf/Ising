@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.backends.backend_pdf as backend_pdf
 
 # Local imports
-from ising.utils.file_utils import figBasicPath, eigenfile
+from ising.utils.file_utils import figBasicPath, load_sparse_csr, eigenfile
 import ising.utils.operator_utils as ou
 import ising.utils.ising_plot_utils as ipu
 import ising.models.base as models
