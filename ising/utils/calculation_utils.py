@@ -539,7 +539,7 @@ def eigh_symms(H, L, S,
                load_projfile=None,
                save_systemfile=None,
                save_eigenfile=None,
-               save_all=False):
+               get_all=False):
     """Diagonalize the operator H by dividing into symmetry sectors and
     finding the eigensystem of each.
     Saves the subspace Hamiltonians and eigensystems in dictionaries if
@@ -552,11 +552,12 @@ def eigh_symms(H, L, S,
         proj_dict = get_symm_proj(L, S)
     else:
         proj_dict = load_sparse_csr(load_projfile)
-    sub_evals, sub_evecs = diagonalize_subspaces(H, proj, L, S)
+    sub_evals, sub_evecs = diagonalize_subspaces(H, proj_dict, L, S)
 
     # Adding additional options for playing with memory requirements
     # for eigensystems
-    if save_all:
+    if get_all:
+        # Finding the full eigensystem
         # Concatenating results for all symmetry sectors
         all_evals = []
         all_evecs = []
@@ -572,26 +573,25 @@ def eigh_symms(H, L, S,
             else:
                 all_evecs = np.concatenate((all_evecs, sector_evecs))
         eigen_dict = {'evals': all_evals, 'evecs': all_evecs}
-
+        # Alternatively, could use
+        # eigen_dict = {'evals': all_evals,
+        #               'evecs': all_evecs,
+        #               'subspace evals': sub_evals,
+        #               'subspace evecs': sub_evecs
+        #               }
+        # to additionally store subspace information.
     else:
+        # Finding the sub-eigensystems, of smaller dimensionality
         eigen_dict = {'subspace evals': sub_evals,
-                      'subspace evecs': sub_evals}
+                      'subspace evecs': sub_evecs}
 
-    # DEBUG:
     # System dictionary doesn't take up too much memory
-    # so I'd like to leave it in for now
     system_dict = {'H': H,
                    'H_proj': {sector: P @ H @ np.conj(P.T)
                               for sector, P in
                               zip(proj_dict.keys(),
                                   [proj_dict[f] for f in proj_dict.keys()])}
                    }
-
-    # eigen_dict = {'evals': all_evals,
-    #               'evecs': all_evecs,
-    #               'subspace evals': sub_evals,
-    #               'subspace evecs': sub_evals
-    #               }
 
     # Saving if save files are specified:
     if save_systemfile is not None:
@@ -611,8 +611,8 @@ def esys_from_sub_dicts(proj_dict, eigen_dict):
     the full system, respectively.
     """
     # Getting sub-eigensystems 
-    sub_evals = eigen_dict['subspace evals']
-    sub_evecs = eigen_dict['subspace evecs']
+    sub_evals = eigen_dict['subspace evals'][()]
+    sub_evecs = eigen_dict['subspace evecs'][()]
 
     # Concatenating results for all subspaces
     all_evals = []
@@ -622,6 +622,10 @@ def esys_from_sub_dicts(proj_dict, eigen_dict):
 
         # Putting the eigenvectors into the full Hilbert space
         P_hc = np.conj(proj_dict[sector].T)
+        print(np.shape(P_hc.toarray()))
+        print(sub_evecs[sector])
+        print(np.shape(sub_evals[sector]))
+        print(np.shape(sub_evecs[sector]))
         sector_evecs = np.array([P_hc@v for v in sub_evecs[sector]])
         if i == 0:
             all_evecs = sector_evecs
