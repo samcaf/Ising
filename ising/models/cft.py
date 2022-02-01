@@ -9,7 +9,7 @@ def entropy_formula(L, ell, c, cprime):
 
     See, for example,
     https://arxiv.org/pdf/0905.4013.pdf
-    
+
     Parameters
     ----------
     L : int
@@ -28,7 +28,9 @@ def entropy_formula(L, ell, c, cprime):
     Returns
     -------
     float
-        The entanglement entropy of the 
+        The entanglement entropy of a region of length ell in the ground state
+        of a CFT with lattice size L, central charge c, and additional
+        Renyi parameter cprime from the replica trick.
 
     """
     return (c/3) * np.log((L/np.pi) * np.sin(np.pi*ell/L))

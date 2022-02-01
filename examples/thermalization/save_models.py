@@ -3,7 +3,7 @@ import os.path
 
 # Local imports
 import ising.models.base as models
-from ising.models.save import *
+from ising.models.save import save_projectors, save_default_model
 from ising.utils.file_utils import projfile, eigenfile
 from examples.thermalization.params import Ls, MODELS, VERBOSE
 

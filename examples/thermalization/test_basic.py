@@ -36,15 +36,13 @@ def plot_eev_density_symm(L, Op, eigen_dict, proj_dict, path=None):
     evals = np.array([ev for eval_list in evals for ev in eval_list])
     op_eev = []
 
-
     for sector in proj_dict.keys():
         # Setting up information for this symmetry sector
-        sector_evals = sub_evals[sector] 
         sector_evecs = sub_evecs[sector]
         P = proj_dict[sector]
         sector_Op = P @ Op @ np.conj(P).T
 
-        print("            Symmetry sector: " +str(sector))
+        print("            Symmetry sector: " + str(sector))
         print("            Projector shape: " + str(np.shape(P)))
         print("            Sector eval shape: " + str(np.shape(P)))
         print("            Sector evec shape: " + str(np.shape(P)))
@@ -52,7 +50,7 @@ def plot_eev_density_symm(L, Op, eigen_dict, proj_dict, path=None):
 
         this_eev = cu.op_ev(sector_Op, sector_evecs)
         op_eev = np.concatenate((op_eev, this_eev))
-    
+
     # Plotting
     plt.hist2d(evals/L, op_eev, 40)
 
@@ -62,7 +60,8 @@ def plot_eev_density_symm(L, Op, eigen_dict, proj_dict, path=None):
     return fig
 
 
-def plot_microcanonical_comparison_symm(L, Op, eigen_dict, proj_dict, path=None):
+def plot_microcanonical_comparison_symm(L, Op, eigen_dict, proj_dict,
+                                        path=None):
     # Preparing eigensystem information
     sub_evals = eigen_dict['subspace evals'][()]
     sub_evecs = eigen_dict['subspace evecs'][()]
@@ -76,26 +75,23 @@ def plot_microcanonical_comparison_symm(L, Op, eigen_dict, proj_dict, path=None)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
 
-    op_eev_mid, op_eev_mc, sigmaOp = [], [], []
+    op_eev_mid, op_ev_mc, sigmaOp = [], [], []
 
     for sector in proj_dict.keys():
         # Setting up information for this symmetry sector
         sector_evals = sub_evals[sector]
         sector_evecs = sub_evecs[sector]
         P = proj_dict[sector]
-        sector_Op = P @ O @ np.conj(P).T
+        sector_Op = P @ Op @ np.conj(P).T
 
         # Preparing fluctuation info
         this_eev, this_mc, this_sig = cu.op_eev_fluct(L, sector_Op,
                                                       sector_evals,
                                                       sector_evecs,
-                                                      deltaE,
-                                                      spectrum_center,
-                                                      spectrum_width)
+                                                      deltaE=.025*L)
         op_eev_mid = np.concatenate((op_eev_mid, this_eev))
         op_ev_mc = np.concatenate((op_ev_mc, this_mc))
         sigmaOp = np.concatenate((sigmaOp, this_sig))
-
 
         # Plotting
         plt.plot(op_eev_mid, '.', label='Eigenstate')
@@ -108,7 +104,8 @@ def plot_microcanonical_comparison_symm(L, Op, eigen_dict, proj_dict, path=None)
     return fig, op_eev_mid, op_ev_mc, sigmaOp
 
 
-def plot_canonical_comparison_symm(L, Op, eigen_dict, proj_dict, path=None):
+def plot_canonical_comparison_symm(L, Op, eigen_dict, proj_dict,
+                                   path=None, op_desc=None):
     # Preparing eigensystem information
     sub_evals = eigen_dict['subspace evals'][()]
     sub_evecs = eigen_dict['subspace evecs'][()]
@@ -116,14 +113,16 @@ def plot_canonical_comparison_symm(L, Op, eigen_dict, proj_dict, path=None):
     # Preparing plot
     fig = plt.figure(figsize=(10, 8))
     title = r'EEVs, $L=%d,~\Delta E=0.025L$' % L
+
     if op_desc is not None:
         title = title+r', $\mathcal{O}=$'+op_desc
+
     plt.title(title, fontsize=16)
     plt.xlabel(r'$\langle H\rangle/L$', fontsize=16)
     plt.ylabel(r'$\langle \mathcal{O} \rangle$', fontsize=16)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    
+
     # ------------------------------------------------
     # Preparing for canonical ensemble calculations
     # ------------------------------------------------
@@ -133,14 +132,13 @@ def plot_canonical_comparison_symm(L, Op, eigen_dict, proj_dict, path=None):
     Ts = np.logspace(-1, 10, 100)
 
     op_eev = []
-    EList, EListneg = [], []    
+    EList, EListneg = [], []
 
     for sector in proj_dict.keys():
         # Setting up information for this symmetry sector
-        sector_evals = sub_evals[sector]
         sector_evecs = sub_evecs[sector]
         P = proj_dict[sector]
-        sector_Op = P @ O @ np.conj(P).T
+        sector_Op = P @ Op @ np.conj(P).T
 
         # Setting up operator eigenstate expectation values
         this_eev = cu.op_ev(sector_Op, sector_evecs)
@@ -154,7 +152,7 @@ def plot_canonical_comparison_symm(L, Op, eigen_dict, proj_dict, path=None):
         Z = np.sum(Gibbs)
         EList[t] = np.dot(evals, Gibbs)/Z
         OList[t] = np.dot(op_eev, Gibbs)/Z
-        
+
     # Negative temperature canonical expectation values
     EListneg = np.zeros(len(Ts))
     OListneg = np.zeros(len(Ts))
@@ -170,7 +168,6 @@ def plot_canonical_comparison_symm(L, Op, eigen_dict, proj_dict, path=None):
              label=r'$\langle \mathcal{O} \rangle_T$, positive T')
     plt.plot(EListneg/L, OListneg, 'm.-',
              label=r'$\langle \mathcal{O} \rangle_T$, negative T')
-
 
     plt.tight_layout()
     plt.legend(fontsize=16)
@@ -260,8 +257,8 @@ for model in MODELS:
         _, _, _, sz = ou.gen_s0sxsysz(L)
         Op = sz[L//2]
         plot_eev_density_symm(L, Op, eigen_dict, proj_dict,
-                                 path=figBasicPath+model
-                                 + '_eevdensity_{}sites.pdf'.format(L))
+                              path=figBasicPath+model
+                              + '_eevdensity_{}sites.pdf'.format(L))
 
         """
         print("        # --------------------------\n"

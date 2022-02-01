@@ -606,7 +606,7 @@ def eigh_symms(H, L, S,
 def esys_from_sub_dicts(proj_dict, eigen_dict, usetype=np.dtype('c8')):
     """A method to retrieve a full eigensystem from orthogonal
     sub-eigensystems.
-    
+
     Takes in dictionaries encoding the projectors into a set of subspaces
     and the eigensystems of the subspaces, respectively.
 
@@ -618,7 +618,7 @@ def esys_from_sub_dicts(proj_dict, eigen_dict, usetype=np.dtype('c8')):
     use the complex128 dtype, but tries to use complex64 instead if there
     are memory errors.
     """
-    # Getting sub-eigensystems 
+    # Getting sub-eigensystems
     sub_evals = eigen_dict['subspace evals'][()]
     sub_evecs = eigen_dict['subspace evecs'][()]
 
@@ -635,10 +635,10 @@ def esys_from_sub_dicts(proj_dict, eigen_dict, usetype=np.dtype('c8')):
             # Try to get the projected eigenvectors
             sector_evecs = np.array([P_hc@v.astype(usetype)
                                      for v in sub_evecs[sector]])
-        except numpy.core._exceptions.MemoryError as e:
+        except np.core._exceptions.MemoryError as e:
             # If we run into memory errors
             if usetype is np.dtype('c16'):
-                # If we are trying to use a larger complex datatype 
+                # If we are trying to use a larger complex datatype
                 sector_evecs = np.array([P_hc@v.astype(np.dtype('c8'))
                                          for v in sub_evecs[sector]])
             else:
@@ -646,7 +646,6 @@ def esys_from_sub_dicts(proj_dict, eigen_dict, usetype=np.dtype('c8')):
                 # Raise the error.
                 raise e
 
-        
         if i == 0:
             all_evecs = sector_evecs
         else:
@@ -658,7 +657,7 @@ def esys_from_sub_dicts(proj_dict, eigen_dict, usetype=np.dtype('c8')):
 def esys_from_sub_files(load_projfile, load_eigenfile):
     """A method to retrieve a full eigensystem from orthogonal
     sub-eigensystems.
-    
+
     Takes in files storing the projectors into a set of subspaces and
     the eigensystems of the subspaces, respectively.
 
@@ -697,7 +696,7 @@ def entanglement_entropy(state, cut_len, rep_dim=2):
     # Get the size of the spin chain
     L = int(np.round(np.log(len(state))/np.log(rep_dim)))
 
-    # We now divide the state into cut_len site slices, introducing a matrix C_ij
+    # Divide the state into cut_len site slices, introducing a matrix C_ij
     Cij = np.reshape(state, (rep_dim**cut_len, rep_dim**(L-cut_len)))
 
     # Finding the singular values of C_ij (and thus the reduced density matrix)
@@ -736,6 +735,11 @@ def entanglement_entropy(state, cut_len, rep_dim=2):
 # With these, the calculation of the entanglement entropy is simple:
 #     S_ent = - sum_s s^2 log(s^2).
 
+
+# ---------------------
+# CFT Entanglement
+# ---------------------
+
 def cft_entropy(L, cut_len, c, cprime):
     """A formula for the entanglement entropy of the ground state of
     a 1D CFT.
@@ -766,6 +770,7 @@ def cft_entropy(L, cut_len, c, cprime):
 
     """
     return (c/3) * np.log((L/np.pi) * np.sin(np.pi*cut_len/L))
+
 
 def match_cft_entropy(L, cut_lens, entropies):
     """Matches a list of cut lengths and associated entropies

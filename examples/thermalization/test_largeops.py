@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.backends.backend_pdf as backend_pdf
 
 # Local imports
-from ising.utils.file_utils import eigenfile
+from ising.utils.file_utils import projfile, eigenfile, load_sparse_csr
 import ising.utils.operator_utils as ou
 import ising.utils.calculation_utils as cu
 import ising.utils.ising_plot_utils as ipu
@@ -45,11 +45,11 @@ for model in MODELS:
     for L in Ls:
         # ----------------------
         # Setting up model
-        # ----------------------       
+        # ----------------------
         print("##################################\n"
               + "Calculations for model: "+str(model) + "; L="+str(L)
               + "\n##################################", flush=True)
-              
+
         model_params, symmetries = models.default_params(model, L=L,
                                                          integrable=False)
         # Retrieving stored information
@@ -59,7 +59,7 @@ for model in MODELS:
         proj_dict = load_sparse_csr(projfile(L, S=1/2, **symmetries))
         eigen_dict = np.load(eigenfile(model, **model_params),
                              allow_pickle=True)
-        
+
         # Getting eigensystems
         print("        # --------------------------\n"
               + "        # Getting eigensystems\n"
@@ -91,7 +91,7 @@ for model in MODELS:
         for k in range(L):
             y_string = central_ops[k]['y'*k]
             fig, eev, ev_mc, sigmaOp = ipu.plot_opstring(L, y_string, k,
-                                                         evals, evecs)
+                                                         all_evals, all_evecs)
             ystring_file.savefig(fig)
 
             op_eevs_ys.append(eev)

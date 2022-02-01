@@ -13,5 +13,3 @@ MODELS = ['MFIM', 'XXZ', 'ZXXXXZZ']
 
 figBasicPath = figPath+'thermalization/basic/'
 figLargeOpsPath = figPath+'thermalization/largeops/'
-
-
