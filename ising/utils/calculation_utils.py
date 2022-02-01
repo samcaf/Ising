@@ -4,6 +4,9 @@ import numpy as np
 # Linear Algebra Imports
 import scipy.sparse as sparse
 
+# Import for curve fitting
+from scipy.optimize import curve_fit
+
 # Local imports
 import ising.utils.state_utils as su
 import ising.utils.operator_utils as ou
@@ -80,7 +83,7 @@ def op_ev_state(state, evals, evecs, Op, Ts=[0]):
 # ================================
 
 def op_ev(Op, vecs):
-    """Returns the expectation value of the operator Op in the states vecs."""
+    """Returns the expectation values of the operator Op in the states vecs."""
     return np.sum(np.conj(vecs)*(Op.dot(vecs)), axis=0)
 
 
@@ -600,7 +603,7 @@ def eigh_symms(H, L, S,
         np.savez(save_eigenfile, **eigen_dict)
 
 
-def esys_from_sub_dicts(proj_dict, eigen_dict):
+def esys_from_sub_dicts(proj_dict, eigen_dict, usetype=np.dtype('c8')):
     """A method to retrieve a full eigensystem from orthogonal
     sub-eigensystems.
     
@@ -609,6 +612,11 @@ def esys_from_sub_dicts(proj_dict, eigen_dict):
 
     Returns lists containing the eigenvalues and eigenvectors of
     the full system, respectively.
+
+    By default, uses numpy's complex64 dtype to avoid memory errors from
+    the outset. If you pass np.dtype('c16') to usetype, this will try to
+    use the complex128 dtype, but tries to use complex64 instead if there
+    are memory errors.
     """
     # Getting sub-eigensystems 
     sub_evals = eigen_dict['subspace evals'][()]
@@ -622,11 +630,23 @@ def esys_from_sub_dicts(proj_dict, eigen_dict):
 
         # Putting the eigenvectors into the full Hilbert space
         P_hc = np.conj(proj_dict[sector].T)
-        print(np.shape(P_hc.toarray()))
-        print(sub_evecs[sector])
-        print(np.shape(sub_evals[sector]))
-        print(np.shape(sub_evecs[sector]))
-        sector_evecs = np.array([P_hc@v for v in sub_evecs[sector]])
+
+        try:
+            # Try to get the projected eigenvectors
+            sector_evecs = np.array([P_hc@v.astype(usetype)
+                                     for v in sub_evecs[sector]])
+        except numpy.core._exceptions.MemoryError as e:
+            # If we run into memory errors
+            if usetype is np.dtype('c16'):
+                # If we are trying to use a larger complex datatype 
+                sector_evecs = np.array([P_hc@v.astype(np.dtype('c8'))
+                                         for v in sub_evecs[sector]])
+            else:
+                # Otherwise, we've done everything we can already.
+                # Raise the error.
+                raise e
+
+        
         if i == 0:
             all_evecs = sector_evecs
         else:
@@ -654,16 +674,16 @@ def esys_from_sub_files(load_projfile, load_eigenfile):
 # Entanglement
 # ================================
 
-def entanglement_entropy(state, cut_x, rep_dim=2):
+def entanglement_entropy(state, cut_len, rep_dim=2):
     """Returns the entanglement entropy of a state on a spin chain with local
-    dimension dim, across the cut at site cut_x.
+    dimension dim, across the cut at site cut_len.
 
 
     Parameters
     ----------
     state : array
         Array represting the state in the tensor product basis.
-    cut_x : int
+    cut_len : int
         Location of the cut across which entanglement entropy is calculated.
     rep_dim : int
         Dimension of the Hilbert space at each lattice site.
@@ -677,8 +697,8 @@ def entanglement_entropy(state, cut_x, rep_dim=2):
     # Get the size of the spin chain
     L = int(np.round(np.log(len(state))/np.log(rep_dim)))
 
-    # We now divide the state into cut_x site slices, introducing a matrix C_ij
-    Cij = np.reshape(state, (rep_dim**cut_x, rep_dim**(L-cut_x)))
+    # We now divide the state into cut_len site slices, introducing a matrix C_ij
+    Cij = np.reshape(state, (rep_dim**cut_len, rep_dim**(L-cut_len)))
 
     # Finding the singular values of C_ij (and thus the reduced density matrix)
     S = np.linalg.svd(Cij, full_matrices=0, compute_uv=0)
@@ -696,9 +716,9 @@ def entanglement_entropy(state, cut_x, rep_dim=2):
 # (x_cut) x (L - x_cut) matrix,
 #     C = {C_ij}.
 #
-# The state can be divided into L-cut_x sites and cut_x sites as
-# |state> = sum_{k_i = 1}^dim |k_1> ... |k_{L - cut_x}> |psi^{k_1 ...s}>,
-# where the final state is on the last cut_x sites.
+# The state can be divided into L-cut_len sites and cut_len sites as
+# |state> = sum_{k_i = 1}^dim |k_1> ... |k_{L - cut_len}> |psi^{k_1 ...s}>,
+# where the final state is on the last cut_len sites.
 # then the first row of C_ij is
 #     C_0j = |psi^{000...00}>_j,
 # The second is
@@ -715,3 +735,51 @@ def entanglement_entropy(state, cut_x, rep_dim=2):
 # of C^T C, so the singular values of C give the eigenvalues of rho.
 # With these, the calculation of the entanglement entropy is simple:
 #     S_ent = - sum_s s^2 log(s^2).
+
+def cft_entropy(L, cut_len, c, cprime):
+    """A formula for the entanglement entropy of the ground state of
+    a 1D CFT.
+    Useful for understanding models near criticality.
+
+    See, for example,
+    https://arxiv.org/pdf/0905.4013.pdf
+
+    Parameters
+    ----------
+    L : int
+        An integer describing the length of the spin chain.
+    cut_len : int
+        An integer describing the size of the subsystem of interest,
+        over whose complement we trace to find a reduced density matrix
+        and thus an entanglement entropy.
+    c : float
+        Central charge of the CFT.
+    cprime : float
+        A constant which emerges in the replica calculation for
+        entantlement entropy. I don't have any physical intuition
+        for this one.
+
+    Returns
+    -------
+    float
+        The entanglement entropy of the
+
+    """
+    return (c/3) * np.log((L/np.pi) * np.sin(np.pi*cut_len/L))
+
+def match_cft_entropy(L, cut_lens, entropies):
+    """Matches a list of cut lengths and associated entropies
+    to the CFT function for entanglement entropy, using
+    scipy.optimize.curve_fit.
+
+    Outputs the associated constants (central charge and cprime)
+    for the matched CFT.
+    """
+    def model_entropy(cut_len, c, cprime):
+        return cft_entropy(L, cut_len, c, cprime)
+
+    params, _ = curve_fit(model_entropy, cut_lens, entropies)
+
+    c, cprime = params
+
+    return c, cprime

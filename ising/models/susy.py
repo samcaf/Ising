@@ -85,3 +85,5 @@ def Qdag_M(L, width=1, k=0, bc='pbc', ys=None):
 
 def Q_M(L, **args):
     return sparse.csr_matrix.conjugate(Qdag_M(L, **args))
+
+# Try Appendix A of https://arxiv.org/pdf/1301.7449.pdf

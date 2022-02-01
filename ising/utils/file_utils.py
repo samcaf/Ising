@@ -8,10 +8,8 @@ import re
 # ---------------
 # Local directory for storage
 isingPath = '/home/gridsan/sfard/Projects/Ising'
-storagePath = isingPath+'/operators/'
+opPath = isingPath+'/operators/'
 figPath = isingPath+'/figures/'
-figBasicPath = isingPath+'/figures/basic/'
-figLargeOpsPath = isingPath+'/figures/largeops/'
 
 valid_models = ['MFIM', 'XXZ', 'ZXXXXZZ', 'SUSY']
 
@@ -21,7 +19,7 @@ def check_valid_models(model):
 
 
 def projfile(L, S, spin_flip, translation, inversion, u1,
-             **params):
+             path=opPath, **params):
     """Standardized filename to store projection operators."""
     # Extra label setup, encoding symmetries
     label = ''
@@ -39,7 +37,7 @@ def projfile(L, S, spin_flip, translation, inversion, u1,
     # Simplifying the filename for default spin 1/2
     if S == 1/2:
         file = 'projectors_'+label+'_L{}'.format(L)+'.npz'
-    return storagePath+file
+    return opPath+file
 
 
 def sysfile(model, **params):
@@ -48,7 +46,7 @@ def sysfile(model, **params):
     # All models we are considering now are spin 1/2
     param_info = ['_'+f+str(params[f]) for f in params.keys() if f != 'S']
     param_info = ''.join(map(str, param_info))
-    return storagePath+model + '_sysfile' + param_info + '.npz'
+    return opPath+model + '_sysfile' + param_info + '.npz'
 
 
 def eigenfile(model, **params):
@@ -57,7 +55,7 @@ def eigenfile(model, **params):
     # All models we are considering now are spin 1/2
     param_info = ['_'+f+str(params[f]) for f in params.keys() if f != 'S']
     param_info = ''.join(map(str, param_info))
-    return storagePath+model + '_eigenfile' + param_info + '.npz'
+    return opPath+model + '_eigenfile' + param_info + '.npz'
 
 
 # ---------------

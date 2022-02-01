@@ -27,3 +27,10 @@ path_append PYTHONPATH $PWD
 
 # Preparing paths for figures and operators
 sed -i "s|isingPath = .*|isingPath = '"$PWD"'|" ising/utils/file_utils.py
+
+# Making directories for files and operators if they do not already exist
+mkdir -p operators
+mkdir -p figures
+mkdir -p figures/thermalization
+mkdir -p figures/thermalization/basic
+mkdir -p figures/thermalization/largeops

@@ -15,7 +15,7 @@ Saving models
 # ------------------
 Starting at "
 date
-sbatch -W examples/slurm_scripts/save_models.sh
+sbatch -W examples/slurm_scripts/thermalization/save_models.sh
 echo "Complete at "
 date
 echo "
@@ -25,7 +25,7 @@ Plotting Basic Tests
 # ------------------
 Starting at "
 date
-sbatch -W examples/slurm_scripts/test_thermal_basic.sh
+sbatch -W examples/slurm_scripts/thermalization/test_basic.sh
 echo "Complete at"
 date
 echo "

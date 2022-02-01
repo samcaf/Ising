@@ -96,10 +96,10 @@ def plot_eev_density(L, Op, evals, evecs, path=None):
         fig.savefig(path, format='pdf')
     return fig
 
+
 # -------------------
 # Microcanonical Comparison
 # -------------------
-
 
 def plot_microcanonical_comparison(L, Op, evals, evecs, deltaE,
                                    spectrum_center=1/2, spectrum_width=20,
@@ -110,41 +110,41 @@ def plot_microcanonical_comparison(L, Op, evals, evecs, deltaE,
                                                     spectrum_width)
 
     fig = plt.figure()
-    plt.plot(op_eev_mid, '.', label='Eigenstate')
-    plt.plot(op_ev_mc, label='Microcanonical')
     plt.title(r'Comparison to Microcanonical, $L=%d$' % L, fontsize=16)
     plt.title(r'L=%d, $\Delta E=0.025L,~\mathcal{O}=S^z_{L/2}$' % L,
               fontsize=16)
     plt.ylim(-0.5, 0.5)
-    plt.legend(fontsize=16)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    plt.tight_layout()
 
+    plt.plot(op_eev_mid, '.', label='Eigenstate')
+    plt.plot(op_ev_mc, label='Microcanonical')
+
+    plt.tight_layout()
+    plt.legend(fontsize=16)
     if path is None:
         fig.savefig(path, format='pdf')
-
     return fig, op_eev_mid, op_ev_mc, sigmaOp
 
 
-# Fluctuations
 def plot_microcanonical_fluctuations(Ls, sigmaOp_vec, path=None):
     # Plotting the narrowing of fluctuations with system size
     D = 2**np.array(Ls[:])
     fluct = np.sqrt(sigmaOp_vec[:])
 
     fig = plt.figure()
-    plt.loglog(D, fluct, 'o', r'$\sigma_{\mathcal{O}}$')
     slope, b = np.polyfit(np.log(D), np.log(fluct), 1)
-    plt.loglog(D, np.exp(b)*(D**slope), label=r'$y=%.2fx + %.2f$' % (slope, b))
     plt.xlabel(r'$D=2^L$', fontsize=16)
     plt.ylabel(r'$\sigma_{\mathcal{O}}$', fontsize=16)
     plt.title('EEV Fluctuations around Microcanonical Value', fontsize=16)
-    plt.legend(fontsize=16)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    plt.tight_layout()
 
+    plt.loglog(D, fluct, 'o', r'$\sigma_{\mathcal{O}}$')
+    plt.loglog(D, np.exp(b)*(D**slope), label=r'$y=%.2fx + %.2f$' % (slope, b))
+
+    plt.legend(fontsize=16)
+    plt.tight_layout()
     if path is not None:
         fig.savefig(path, format='pdf')
     return fig
@@ -154,8 +154,23 @@ def plot_microcanonical_fluctuations(Ls, sigmaOp_vec, path=None):
 # Canonical Comparison
 # -------------------
 
+def plot_canonical_comparison(L, Op, evals, evecs, op_desc=None, path=None):
+    # Setting up plot
+    fig = plt.figure(figsize=(14, 10))
+    plt.xlabel(r'$\langle H\rangle/L$', fontsize=16)
+    plt.ylabel(r'$\langle \mathcal{O} \rangle$', fontsize=16)
 
-def plot_canonical_comparison(L, Op, evals, evecs, path=None):
+    title = r'EEVs, $L=%d,~\Delta E=0.025L$' % L
+    if op_desc is not None:
+        title = title+r', $\mathcal{O}=$'+op_desc
+    plt.title(title, fontsize=16)
+
+    plt.xlabel(r'$\langle H\rangle/L$', fontsize=16)
+    plt.ylabel(r'$\langle \mathcal{O} \rangle$', fontsize=16)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+
+    # Setting up operator eigenstate expectation values
     op_eev = cu.op_ev(Op, evecs)
 
     # Positive temperature canonical expectation values
@@ -178,21 +193,14 @@ def plot_canonical_comparison(L, Op, evals, evecs, path=None):
         OListneg[t] = np.dot(Gibbs, op_eev)/Z
 
     # Plotting
-    fig = plt.figure(figsize=(14, 10))
     plt.plot(evals/L, op_eev, '.', label='Eigenstates')
-    plt.xlabel(r'$\langle H\rangle/L$', fontsize=16)
-    plt.ylabel(r'$\langle \mathcal{O} \rangle$', fontsize=16)
-    plt.title(r'EEVs, L=%d, $\Delta E=0.025L,~\mathcal{O}=S^z_{L/2}$' % L,
-              fontsize=16)
     plt.plot(EList/L, OList, 'r.-',
              label=r'$\langle \mathcal{O} \rangle_T$, positive T')
     plt.plot(EListneg/L, OListneg, 'm.-',
              label=r'$\langle \mathcal{O} \rangle_T$, negative T')
-    plt.legend(fontsize=16)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    plt.tight_layout()
 
+    plt.legend(fontsize=16)
+    plt.tight_layout()
     if path is not None:
         fig.savefig(path, format='pdf')
     return fig
@@ -209,11 +217,16 @@ def plot_canonical_comparison(L, Op, evals, evecs, path=None):
 # Entropy
 # -------------------
 
-def plot_eigenstate_entropies(L, evecs, path=None):
+def plot_state_entropies(L, state, cft_match=False, path=None):
     entropies = []
 
+    # Finding entropies
     for cut_x in range(1, L//2):
-        entropies.append([cu.entanglement_entropy(evec, cut_x)
-                          for evec in evecs])
+        entropies.append(cu.entanglement_entropy(state, cut_x))
 
+    # Matching to the CFT ground state entropy
+    if cft_match:
+        c, cprime = cu.match_cft_entropy(L, range(1, L//2), entropies)
+
+    # Plotting
     # plot3D(np.array(entropies).flatten(), range(1, L//2), evals)
