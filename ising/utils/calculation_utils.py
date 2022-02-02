@@ -539,6 +539,7 @@ def diagonalize_subspaces(H, proj_dict,
 
 
 def eigh_symms(H, L, S,
+               proj_dict=None,
                load_projfile=None,
                save_systemfile=None,
                save_eigenfile=None,
@@ -551,10 +552,11 @@ def eigh_symms(H, L, S,
     Designed for a 1D lattice spin system of length L with and site spin S.
     """
     # Finding symmetry projectors and diagonalizing H in symmetry sectors
-    if load_projfile is None:
-        proj_dict = get_symm_proj(L, S)
-    else:
-        proj_dict = load_sparse_csr(load_projfile)
+    if proj_dict is None:
+        if load_projfile is None:
+            proj_dict = get_symm_proj(L, S)
+        else:
+            proj_dict = load_sparse_csr(load_projfile)
     sub_evals, sub_evecs = diagonalize_subspaces(H, proj_dict, L, S)
 
     # Adding additional options for playing with memory requirements
@@ -592,8 +594,7 @@ def eigh_symms(H, L, S,
     system_dict = {'H': H,
                    'H_proj': {sector: P @ H @ np.conj(P.T)
                               for sector, P in
-                              zip(proj_dict.keys(),
-                                  [proj_dict[f] for f in proj_dict.keys()])}
+                              proj_dict.items()}
                    }
 
     # Saving if save files are specified:
@@ -601,6 +602,8 @@ def eigh_symms(H, L, S,
         save_sparse_csr(save_systemfile, **system_dict)
     if save_eigenfile is not None:
         np.savez(save_eigenfile, **eigen_dict)
+
+    return eigen_dict
 
 
 def esys_from_sub_dicts(proj_dict, eigen_dict, usetype=np.dtype('c8')):
@@ -780,10 +783,10 @@ def match_cft_entropy(L, cut_lens, entropies):
     Outputs the associated constants (central charge and cprime)
     for the matched CFT.
     """
-    def model_entropy(cut_len, c, cprime):
+    def model_cft_entropy(cut_len, c, cprime):
         return cft_entropy(L, cut_len, c, cprime)
 
-    params, _ = curve_fit(model_entropy, cut_lens, entropies)
+    params, _ = curve_fit(model_cft_entropy, cut_lens, entropies)
 
     c, cprime = params
 

@@ -8,7 +8,7 @@ import ising.utils.calculation_utils as cu
 # File utils
 from ising.utils.file_utils import load_sparse_csr
 from ising.utils.file_utils import projfile, sysfile, eigenfile
-import ising.models.base as base
+import ising.models.ising_type_utils as base
 
 
 # ===================================

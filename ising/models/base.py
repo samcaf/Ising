@@ -1,161 +1,294 @@
 # Basic imports
 import numpy as np
+from scipy.sparse.linalg import eigsh
+from abc import ABC, abstractmethod
 
 # Local imports
-import ising.utils.operator_utils as ou
-
-# ===================================
-# Models
-# ===================================
-base_models = ['MFIM', 'XXZ', 'ZXXXXZZ']
+import ising.utils.calculation_utils as cu
+import ising.utils.ising_plot_utils as ipu
+from ising.utils.file_utils import projfile, save_sparse_csr, load_sparse_csr
 
 
-# ------------------------------------
-# Mixed Field Ising model
-# ------------------------------------
+#######################################
+# Model Class:
+#######################################
 
-def gen_mixedfieldising(L, J, hz, hx, bc='pbc', **params):
-    """Generates a Hamiltonian for the mixed field ising model.
-    A non-zero hz leads to to non-integrable dynamics.
+class model_1d(ABC):
+    """An abstract model class designed to facilitate calculations with 1D
+    spin chains and Hamiltonians with sparse matrix representations.
     """
-    # Pauli Matrices
-    S = 1/2
-    _, sx, _, sz = ou.gen_s0sxsysz(L=1, S=S)
-    sx = sx[0]
-    sz = sz[0]
 
-    # Interactions
-    Hxx = J * ou.gt(ou.gen_tnsk(ou.sk(sx, sx), L, S, n=2, bc=bc))
-    Hx = hx * ou.gt(ou.gen_tnsk(sx, L, S, n=1, bc=bc))
-    Hz = hz * ou.gt(ou.gen_tnsk(sz, L, S, n=1, bc=bc))
+    # ========================
+    # Description, basic utils
+    # ========================
+    def __str__(self, verbose=True):
+        # Basic description
+        desc_str = self.name + ": A 1D spin {S} chain of size {L}.\n"
 
-    # Full Hamiltonian
-    H = Hxx + Hx + Hz
-    return H
+        # Parameters
+        param_str = "Model parameters:\n"
+        for key, value in self.params.items():
+            param_str += '    ' + str(key) + ' : ' + str(value) + '\n'
 
+        # Symmetries and Hamiltonian
+        proj_str = "has_projectors : " + str(self.has_projectors) + '\n'
+        if self.has_projectors and self.verbose > 0:
+            proj_str += '    ' + str(len(self.projectors.items()))\
+                        + ' symmetry sectors.\n'
+            if self.verbose > 1:
+                # Fix
+                proj_str += '    Symmetries: '.format(self.symmetries)
+                proj_str += '        ' + str([self.projectors.keys()])
+        H_str = "has_H : " + str(self.has_H) + '\n'
+        if self.has_H and self.verbose > 1:
+            print('H:\n', self.H)
 
-# ------------------------------------
-# XXZ model
-# ------------------------------------
+        return desc_str + '\n' + param_str + '\n' + proj_str + '\n' + H_str
 
-def gen_xxz(L, a, b, bc='pbc', **params):
-    """Generates a Hamiltonian for the xxz model with nearest neighbor
-    interactions."""
-    # Pauli Matrices
-    S = 1/2
-    _, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
-    sx = sx[0]
-    sy = sy[0]
-    sz = sz[0]
+    # ========================
+    # File utils
+    # ========================
+    def projector_file(self):
+        return projfile(self.L, self.S, **self.symmetries)
 
-    # Interactions
-    Hxx = a * ou.gt(ou.gen_tnsk(ou.sk(sx, sx), L, S, n=2, bc=bc))
-    Hyy = a * ou.gt(ou.gen_tnsk(ou.sk(sy, sy), L, S, n=2, bc=bc))
-    Hzz = b * ou.gt(ou.gen_tnsk(ou.sk(sz, sz), L, S, n=2, bc=bc))
+    def H_file():
+        pass
 
-    # Full Hamiltonian
-    H = Hxx + Hyy + Hzz
-    return H
+    def eigen_file():
+        pass
 
+    # ========================
+    # Calculation Utils
+    # ========================
 
-def gen_xxz_nnn(L, j2, bc='pbc', **params):
-    """Generates a next-to-nearest neighbor interaction for the xxz model.
-    This additional term in the Hamiltonian leads to non-integrable dynamics.
-    """
-    # Pauli Matrices
-    S = 1/2
-    _, sx, _, _ = ou.gen_s0sxsysz(L=1, S=S)
-    sx = sx[0]
+    # ------------------
+    # Projectors
+    # ------------------
+    def load_projectors(self):
+        if self.verbose > 0:
+            print("Finding symmetry projectors...")
+        # Load projectors
+        projectors = load_sparse_csr(self.projector_file())
+        self.projectors = projectors
+        if self.verbose > 0:
+            print("Complete!")
 
-    # Interactions
-    # (Of the form [sx*1*sx])
-    Hxx_nnn = j2 * ou.gt(ou.gen_tnsk(ou.sk(ou.sk(sx, np.eye(int(2*S+1))), sx),
-                                     L, S, n=3, bc=bc))
-    return Hxx_nnn
+    def gen_projectors(self, save=True):
+        if self.verbose > 0:
+            print("Generating projectors...")
+        savefile = None
+        if save:
+            savefile = self.projector_file()
+        # Make projectors:
+        projectors = cu.get_symm_proj(self.L, self.S, **self.symmetries,
+                                      save_projfile=savefile)
+        self.projectors = projectors
+        if self.verbose > 0:
+            print("Complete!")
 
+    def get_projectors(self, find_file=True, overwrite=True):
+        if find_file:
+            # Attempt to load from file
+            try:
+                projectors = self.load_projectors()
+            except FileNotFoundError:
+                print("Projectors not found.\n")
+                projectors = self.gen_projectors(save=True)
+        else:
+            # Generate projectors, save when appropriate
+            file_exists = False
+            projectors = self.gen_projectors(save=overwrite or not file_exists)
+        self.has_projectors = True
+        self.projectors = projectors
 
-# ------------------------------------
-# ZXXXXZZ model
-# ------------------------------------
+    # ------------------
+    # Hamiltonian
+    # ------------------
+    def load_H(self):
+        if self.verbose > 0:
+            print("Finding Hamiltonian...")
+        # Load Hamiltonian
+        H = load_sparse_csr(self.H_file())
+        self.H = H
+        if self.verbose > 0:
+            print("Complete!")
 
-def gen_zxxxxzz(L, J, hz, hzz, hxxxx, bc='pbc', **params):
-    """Generates a Hamiltonian for a model with nearest neighbor x
-    interactions, a z-directional magnetic field, an x-x-x-x interaction,
-    and a z-z nearest neighbor interaction.
-    """
-    S = 1/2
-    s0, sx, sy, sz = ou.gen_s0sxsysz(L=1, S=S)
-    s0 = s0[0]
-    sx = sx[0]
-    sy = sy[0]
-    sz = sz[0]
+    def save_H(self):
+        assert self.has_H, "No Hamiltonian to save!"
+        if self.verbose > 0:
+            print("Saving Hamiltonian...")
+        # Save Hamiltonian (full dict doesn't take up too much memory)
+        system_dict = {'H': self.H,
+                       'H_proj': {sector: P @ self.H @ np.conj(P.T)
+                                  for sector, P in
+                                  self.projectors.items()}
+                       }
+        save_sparse_csr(self.H_file, **system_dict)
+        if self.verbose > 0:
+            print("Complete!")
 
-    Hxx = J * ou.gt(ou.gen_tnsk(ou.sk(sx, sx), L, S, n=2, bc=bc))
-    Hz = hz*ou.gt(ou.gen_tnsk(sz, L, S, n=1, bc=bc))
+    @abstractmethod
+    def gen_H(self, save):
+        if self.verbose > 0:
+            print("Generating Hamiltonian...")
+        # Make Hamiltonian:
+        H = None
+        self.H = H
+        if save:
+            # Save Hamiltonian:
+            self.save_H()
+        if self.verbose > 0:
+            print("Complete!")
 
-    # Non-integrable pieces
-    Hxxxx = hxxxx * ou.gt(ou.gen_tnsk(ou.sk(ou.sk(ou.sk(sx, sx), sx), sx),
-                                      L, S, n=4, bc=bc))
-    Hzz = hzz * ou.gt(ou.gen_tnsk(ou.sk(sz, sz), L, S, n=2, bc=bc))
+    def get_H(self, find_file=True, overwrite=True):
+        if find_file:
+            # Attempt to load from file
+            try:
+                H = self.load_H()
+            except FileNotFoundError:
+                print("Hamiltonian not found.\n")
+                H = self.gen_H(save=True)
+        else:
+            # Generate Hamiltonian, save when appropriate
+            file_exists = False
+            H = self.gen_H(save=overwrite or not file_exists)
 
-    H = Hxx + Hz + Hxxxx + Hzz
+        self.has_H = True
+        self.H = H
 
-    return H
+    # ------------------
+    # Diagonalization
+    # ------------------
 
+    def load_eigensys(self, k=None, **params):
+        if self.verbose > 0:
+            print("Finding eigensys...")
+        # Load eigensys
+        # IMPLEMENT
+        eigensys = None
+        self.evals, self.evecs = eigensys
+        if self.verbose > 0:
+            print("Complete!")
 
-# ------------------------------------
-# Default Models
-# ------------------------------------
+    def save_eigensys(self, k=None, **params):
+        assert self.has_eigensys, "No eigensys to save!"
+        if self.verbose > 0:
+            print("Saving eigensys...")
+        # Save eigensys
+        np.savez(self.eigen_file(), **self.eigensys)
+        if self.verbose > 0:
+            print("Complete!")
 
-def default_params(model, L, integrable=False):
-    """Setting up default parameters for each of the models above."""
-    model_params = None
-    if model == 'MFIM':
-        model_params = {'L': L,
-                        'S': 1/2,
-                        'J': 1,
-                        'hx': (np.sqrt(5)+1)/4.,
-                        'hz': (np.sqrt(5)+5)/8. if not integrable else 0}
-        symmetries = {'spin_flip': False,
-                      'translation': True,
-                      'inversion': True,
-                      'u1': False}
-    if model == 'XXZ':
-        model_params = {'L': L,
-                        'S': 1/2,
-                        'a': 1,
-                        'b': 1.05,
-                        'j2': .3 if not integrable else 0}
-        symmetries = {'spin_flip': True,
-                      'translation': True,
-                      'inversion': True,
-                      'u1': False}
-    if model == 'ZXXXXZZ':
-        model_params = {'L': L,
-                        'S': 1/2,
-                        'J': 1,
-                        'hz': .5,
-                        'hzz': .3,
-                        'hxxxx': .3 if not integrable else 0,
-                        }
-        symmetries = {'spin_flip': True,
-                      'translation': True,
-                      'inversion': True,
-                      'u1': False}
+    def gen_eigensys(self, save=False, k=None, use_symms=True, **params):
+        if self.verbose > 0:
+            print("Generating Hamiltonian...")
+        savefile = None
+        if save:
+            savefile = self.eigen_file()
+        # Make eigensystem:
+        if self.has_projectors and use_symms:
+            # If using symmetries
+            if k is not None:
+                evals, evecs = eigsh(self.H, k=k, **params)
+                self.eigensys = {'evals': evals, 'evecs': evecs}
+            else:
+                self.eigensys = cu.eigh_symms(self.H, self.L, self.S,
+                                              proj_dict=self.proj_dict,
+                                              save_eigenfile=savefile)
+        else:
+            # If we are not using symmetries
+            if k is not None:
+                evals, evecs = eigsh(self.H, k=k, **params)
+                self.eigensys = {'evals': evals, 'evecs': evecs}
+            else:
+                evals, evecs = np.linalg.eigh(self.H.toarray())
+                self.eigensys = {'evals': evals, 'evecs': evecs}
 
-    return model_params, symmetries
+        if self.verbose > 0:
+            print("Complete!")
 
+    def get_eigensys(self, find_file=True, overwrite=True, **params):
+        if find_file:
+            # Attempt to load from file
+            try:
+                eigensys = self.load_eigensys(**params)
+            except FileNotFoundError:
+                print("Eigensystem not found.\n")
+                eigensys = self.gen_eigensys(**params)
+        else:
+            # Generate projectors, save when appropriate
+            file_exists = False
+            eigensys = self.gen_eigensys(save=overwrite or not file_exists,
+                                         **params)
 
-def gen_model(model, L, integrable=False):
-    assert model in base_models, "Invalid model."
+        self.has_eigensys = True
+        self.evals, self.evecs = eigensys
 
-    model_params, symmetries = default_params(model, L=L,
-                                              integrable=integrable)
-    if model == 'MFIM':
-        H = gen_mixedfieldising(**model_params)
-    if model == 'XXZ':
-        H = gen_xxz(**model_params) + gen_xxz_nnn(**model_params)
-    if model == 'ZXXXXZZ':
-        H = gen_zxxxxzz(**model_params)
+    # ========================
+    # Plotting utils
+    # ========================
 
-    return H, model_params, symmetries
+    def plot_evaldist(self, multiplot=None, **params):
+        assert self.has_eigensys, "No eigenvalues to plot!"
+        if multiplot is None:
+            ipu.plot_evaldist(evals=self.evals, **params)
+        else:
+            multiplot.plot(ipu.plot_evaldist(self.evals, **params))
+
+    def plot_levelspacing(self, multiplot=None, **params):
+        assert self.has_eigensys, "No eigenvalues to plot!"
+        if multiplot is None:
+            ipu.plot_lvlspace(evals=self.evals, **params)
+        else:
+            multiplot.plot(ipu.plot_lvlspace(evals=self.evals, **params))
+
+    def plot_eev_density(self, Op, multiplot=None, **params):
+        assert self.has_eigensys, "No eigenvalues to plot!"
+        if multiplot is None:
+            ipu.plot_plot_eev_density(L=self.L, Op=Op,
+                                      evals=self.evals, evecs=self.evecs,
+                                      **params)
+        else:
+            multiplot.plot(ipu.plot_lvlspace(evals=self.evals, **params))
+
+    def plot_entanglement(self, eval, multiplot=None, **params):
+        assert self.has_eigensys, "No states for which to plot entropies!"
+        state_index = np.where(self.evals == eval)[0]
+        assert len(state_index) == 1, "Degeneracy/ambiguity in desired state!"
+        state = self.evecs[state_index]
+
+        if multiplot is None:
+            ipu.plot_state_entropies(L=self.L, state=state, **params)
+        else:
+            multiplot.plot(ipu.plot_state_entropies(L=self.L, state=state,
+                                                    **params))
+
+    # ========================
+    # Initialize
+    # ========================
+
+    def __init__(self, name, L, S, params, symmetries,
+                 fast_start=True):
+        # Initializing
+        self.name = name
+        self.L = L
+        self.S = S
+        self.params = params
+        self.symmetries = symmetries
+
+        # Debugging parameters
+        self.verbose = 1
+
+        # Setting up model
+        self.projectors = None
+        self.has_projectors = False
+        self.H = None
+        self.has_H = False
+        self.eigensys = None
+        self.has_eigensys = False
+
+        # Performing computations
+        if fast_start:
+            self.get_projectors()
+            self.get_H()
+            self.get_eigensys()
