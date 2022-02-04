@@ -577,7 +577,8 @@ def eigh_symms(H, L, S,
                 all_evecs = sector_evecs
             else:
                 all_evecs = np.concatenate((all_evecs, sector_evecs))
-        eigen_dict = {'evals': all_evals, 'evecs': all_evecs}
+        eigen_dict = {'evals': all_evals, 'evecs': all_evecs,
+                      'subspace evals': sub_evals, 'subspace evecs': sub_evecs}
         # Alternatively, could use
         # eigen_dict = {'evals': all_evals,
         #               'evecs': all_evecs,

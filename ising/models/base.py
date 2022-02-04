@@ -6,12 +6,26 @@ from abc import ABC, abstractmethod
 # Local imports
 import ising.utils.calculation_utils as cu
 import ising.utils.ising_plot_utils as ipu
-from ising.utils.file_utils import projfile, save_sparse_csr, load_sparse_csr
+from ising.utils.file_utils import projfile, sysfile, eigenfile
+from ising.utils.file_utils import save_sparse_csr, load_sparse_csr
 
 
 #######################################
 # Model Class:
 #######################################
+
+# Default verbosity
+VERBOSE = 5
+
+# Defaults for loading, saving, and overwriting saved model files
+LOAD_DEFAULT = False
+SAVE_DEFAULT = False
+OVERWRITE_DEFAULT = False
+
+# Parameter determining if we find both full and subspace eigensystems
+# when using symmetries for exact diagonalizaion
+GET_FULL_ESYS = True
+
 
 class model_1d(ABC):
     """An abstract model class designed to facilitate calculations with 1D
@@ -51,11 +65,11 @@ class model_1d(ABC):
     def projector_file(self):
         return projfile(self.L, self.S, **self.symmetries)
 
-    def H_file():
-        pass
+    def H_file(self):
+        return sysfile(self.name, **self.params)
 
-    def eigen_file():
-        pass
+    def eigen_file(self):
+        return eigenfile(self.name, **self.params)
 
     # ========================
     # Calculation Utils
@@ -70,10 +84,11 @@ class model_1d(ABC):
         # Load projectors
         projectors = load_sparse_csr(self.projector_file())
         self.projectors = projectors
+        self.has_projectors = True
         if self.verbose > 0:
             print("Complete!")
 
-    def gen_projectors(self, save=True):
+    def gen_projectors(self, save=SAVE_DEFAULT):
         if self.verbose > 0:
             print("Generating projectors...")
         savefile = None
@@ -83,23 +98,23 @@ class model_1d(ABC):
         projectors = cu.get_symm_proj(self.L, self.S, **self.symmetries,
                                       save_projfile=savefile)
         self.projectors = projectors
+        self.has_projectors = True
         if self.verbose > 0:
             print("Complete!")
 
-    def get_projectors(self, find_file=True, overwrite=True):
-        if find_file:
+    def get_projectors(self, load_file=LOAD_DEFAULT,
+                       overwrite=OVERWRITE_DEFAULT):
+        if load_file:
             # Attempt to load from file
             try:
-                projectors = self.load_projectors()
+                self.load_projectors()
             except FileNotFoundError:
                 print("Projectors not found.\n")
-                projectors = self.gen_projectors(save=True)
+                self.gen_projectors(save=SAVE_DEFAULT)
         else:
             # Generate projectors, save when appropriate
             file_exists = False
-            projectors = self.gen_projectors(save=overwrite or not file_exists)
-        self.has_projectors = True
-        self.projectors = projectors
+            self.gen_projectors(save=overwrite or not file_exists)
 
     # ------------------
     # Hamiltonian
@@ -108,8 +123,8 @@ class model_1d(ABC):
         if self.verbose > 0:
             print("Finding Hamiltonian...")
         # Load Hamiltonian
-        H = load_sparse_csr(self.H_file())
-        self.H = H
+        self.H = load_sparse_csr(self.H_file())
+        self.has_H = True
         if self.verbose > 0:
             print("Complete!")
 
@@ -123,7 +138,7 @@ class model_1d(ABC):
                                   for sector, P in
                                   self.projectors.items()}
                        }
-        save_sparse_csr(self.H_file, **system_dict)
+        save_sparse_csr(self.H_file(), **system_dict)
         if self.verbose > 0:
             print("Complete!")
 
@@ -137,24 +152,22 @@ class model_1d(ABC):
         if save:
             # Save Hamiltonian:
             self.save_H()
+        self.has_H = True
         if self.verbose > 0:
             print("Complete!")
 
-    def get_H(self, find_file=True, overwrite=True):
-        if find_file:
+    def get_H(self, load_file=LOAD_DEFAULT, overwrite=OVERWRITE_DEFAULT):
+        if load_file:
             # Attempt to load from file
             try:
-                H = self.load_H()
+                self.load_H()
             except FileNotFoundError:
                 print("Hamiltonian not found.\n")
-                H = self.gen_H(save=True)
+                self.gen_H(save=SAVE_DEFAULT)
         else:
             # Generate Hamiltonian, save when appropriate
             file_exists = False
-            H = self.gen_H(save=overwrite or not file_exists)
-
-        self.has_H = True
-        self.H = H
+            self.gen_H(save=overwrite or not file_exists)
 
     # ------------------
     # Diagonalization
@@ -164,9 +177,9 @@ class model_1d(ABC):
         if self.verbose > 0:
             print("Finding eigensys...")
         # Load eigensys
-        # IMPLEMENT
-        eigensys = None
-        self.evals, self.evecs = eigensys
+        self.eigensys = np.load(self.eigen_file(), allow_pickle=True)
+        self.loaded_eigensys = True
+        self.has_eigensys = True
         if self.verbose > 0:
             print("Complete!")
 
@@ -179,7 +192,8 @@ class model_1d(ABC):
         if self.verbose > 0:
             print("Complete!")
 
-    def gen_eigensys(self, save=False, k=None, use_symms=True, **params):
+    def gen_eigensys(self, save=SAVE_DEFAULT,
+                     k=None, use_symms=True, **params):
         if self.verbose > 0:
             print("Generating Hamiltonian...")
         savefile = None
@@ -189,58 +203,81 @@ class model_1d(ABC):
         if self.has_projectors and use_symms:
             # If using symmetries
             if k is not None:
+                if self.verbose > 5:
+                    print("    Using eigsh with symmetries")
                 evals, evecs = eigsh(self.H, k=k, **params)
                 self.eigensys = {'evals': evals, 'evecs': evecs}
             else:
+                if self.verbose > 5:
+                    print("    Using eigh with symmetries")
                 self.eigensys = cu.eigh_symms(self.H, self.L, self.S,
-                                              proj_dict=self.proj_dict,
-                                              save_eigenfile=savefile)
+                                              proj_dict=self.projectors,
+                                              save_eigenfile=savefile,
+                                              get_all=GET_FULL_ESYS)
         else:
             # If we are not using symmetries
             if k is not None:
+                if self.verbose > 5:
+                    print("    Using eigh without symmetries")
                 evals, evecs = eigsh(self.H, k=k, **params)
                 self.eigensys = {'evals': evals, 'evecs': evecs}
             else:
+                if self.verbose > 5:
+                    print("    Using eigh without symmetries")
                 evals, evecs = np.linalg.eigh(self.H.toarray())
                 self.eigensys = {'evals': evals, 'evecs': evecs}
 
+        self.generated_eigensys = True
+        self.has_eigensys = True
         if self.verbose > 0:
             print("Complete!")
 
-    def get_eigensys(self, find_file=True, overwrite=True, **params):
-        if find_file:
+    def get_eigensys(self, load_file=LOAD_DEFAULT,
+                     overwrite=OVERWRITE_DEFAULT, **params):
+        if load_file:
             # Attempt to load from file
             try:
-                eigensys = self.load_eigensys(**params)
+                self.load_eigensys(**params)
             except FileNotFoundError:
                 print("Eigensystem not found.\n")
-                eigensys = self.gen_eigensys(**params)
+                self.gen_eigensys(**params)
         else:
             # Generate projectors, save when appropriate
             file_exists = False
-            eigensys = self.gen_eigensys(save=overwrite or not file_exists,
-                                         **params)
-
-        self.has_eigensys = True
-        self.evals, self.evecs = eigensys
+            self.gen_eigensys(save=overwrite or not file_exists,
+                              **params)
 
     # ========================
     # Plotting utils
     # ========================
 
-    def plot_evaldist(self, multiplot=None, **params):
+    def plot_eval_dist(self, sector=None, multiplot=None, **params):
         assert self.has_eigensys, "No eigenvalues to plot!"
-        if multiplot is None:
-            ipu.plot_evaldist(evals=self.evals, **params)
-        else:
-            multiplot.plot(ipu.plot_evaldist(self.evals, **params))
+        if sector is None:
+            evals = self.eigensys['evals']
+        elif self.loaded_eigensys:
+            evals = self.eigensys['subspace evals'][()][sector]
+        elif self.generated_eigensys:
+            evals = self.eigensys['subspace evals'][sector]
 
-    def plot_levelspacing(self, multiplot=None, **params):
-        assert self.has_eigensys, "No eigenvalues to plot!"
         if multiplot is None:
-            ipu.plot_lvlspace(evals=self.evals, **params)
+            ipu.plot_evaldist(evals, **params)
         else:
-            multiplot.plot(ipu.plot_lvlspace(evals=self.evals, **params))
+            multiplot.plot(ipu.plot_evaldist(evals, **params))
+
+    def plot_levelspace_dist(self, sector=None, multiplot=None, **params):
+        assert self.has_eigensys, "No eigenvalues to plot!"
+        if sector is None:
+            evals = self.eigensys['evals']
+        elif self.loaded_eigensys:
+            evals = self.eigensys['subspace evals'][()][sector]
+        elif self.generated_eigensys:
+            evals = self.eigensys['subspace evals'][sector]
+
+        if multiplot is None:
+            ipu.plot_lvlspace(evals, **params)
+        else:
+            multiplot.plot(ipu.plot_lvlspace(evals, **params))
 
     def plot_eev_density(self, Op, multiplot=None, **params):
         assert self.has_eigensys, "No eigenvalues to plot!"
@@ -267,17 +304,19 @@ class model_1d(ABC):
     # Initialize
     # ========================
 
-    def __init__(self, name, L, S, params, symmetries,
-                 fast_start=True):
+    def __init__(self, name, symmetries, fast_start=True,
+                 **params):
         # Initializing
         self.name = name
-        self.L = L
-        self.S = S
+        assert 'L' in params.keys(), "Missing a length for the spin chain."
+        self.L = params['L']
+        assert 'S' in params.keys(), "Missing a spin for the spin chain."
+        self.S = params['S']
         self.params = params
         self.symmetries = symmetries
 
         # Debugging parameters
-        self.verbose = 1
+        self.verbose = VERBOSE
 
         # Setting up model
         self.projectors = None
@@ -286,6 +325,10 @@ class model_1d(ABC):
         self.has_H = False
         self.eigensys = None
         self.has_eigensys = False
+        # Some syntax differs for numpy.loaded objects and generated dicts,
+        # so we keep track of how we obtained the eigensystem.
+        self.loaded_eigensys = False
+        self.generated_eigensys = False
 
         # Performing computations
         if fast_start:

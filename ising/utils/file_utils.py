@@ -7,15 +7,10 @@ import re
 # Storage Files
 # ---------------
 # Local directory for storage
-isingPath = '/home/gridsan/sfard/Projects/Ising'
+# isingPath = '/home/gridsan/sfard/Projects/Ising'
+isingPath = '/Users/sam/Documents/Research/Ising/'
 opPath = isingPath+'/operators/'
 figPath = isingPath+'/figures/'
-
-valid_models = ['MFIM', 'XXZ', 'ZXXXXZZ', 'SUSY']
-
-
-def check_valid_models(model):
-    assert model in valid_models, "Invalid model."
 
 
 def projfile(L, S, spin_flip, translation, inversion, u1,
@@ -40,22 +35,20 @@ def projfile(L, S, spin_flip, translation, inversion, u1,
     return opPath+file
 
 
-def sysfile(model, **params):
-    # Standardized filename to store Hamiltonian and subspace Hamiltonians.
-    check_valid_models(model)
-    # All models we are considering now are spin 1/2
+def param_info(**params):
     param_info = ['_'+f+str(params[f]) for f in params.keys() if f != 'S']
     param_info = ''.join(map(str, param_info))
-    return opPath+model + '_sysfile' + param_info + '.npz'
+    return param_info
+
+
+def sysfile(model, **params):
+    """Standardized filename to store Hamiltonian and subspace Hamiltonians."""
+    return opPath+model + '_sysfile' + param_info(**params) + '.npz'
 
 
 def eigenfile(model, **params):
-    # Standardized filename to store eigensystem and subspace eigensystems.
-    check_valid_models(model)
-    # All models we are considering now are spin 1/2
-    param_info = ['_'+f+str(params[f]) for f in params.keys() if f != 'S']
-    param_info = ''.join(map(str, param_info))
-    return opPath+model + '_eigenfile' + param_info + '.npz'
+    """Standardized filename to store eigensystem and subspace eigensystems."""
+    return opPath+model + '_eigenfile' + param_info(**params) + '.npz'
 
 
 # ---------------
