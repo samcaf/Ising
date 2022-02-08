@@ -29,6 +29,7 @@ I want to implement more models than are currently in this folder, and do associ
 	* Search github
 * Expanding lattice?
     * https://arxiv.org/pdf/2201.11658.pdf
+* Generalized global symmetries
 
 ## Resources
 [1] https://arxiv.org/pdf/2201.06588.pdf

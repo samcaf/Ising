@@ -195,7 +195,7 @@ class model_1d(ABC):
     def gen_eigensys(self, save=SAVE_DEFAULT,
                      k=None, use_symms=True, **params):
         if self.verbose > 0:
-            print("Generating Hamiltonian...")
+            print("Generating eigensystem...")
         savefile = None
         if save:
             savefile = self.eigen_file()
@@ -299,6 +299,18 @@ class model_1d(ABC):
         else:
             multiplot.plot(ipu.plot_state_entropies(L=self.L, state=state,
                                                     **params))
+
+    # ========================
+    # Advanced utils
+    # ========================
+    # (partial) Spectral form factor
+
+    # OTOCs
+    # def otoc(Ops, beta, ts=None):
+    #     if ts is None:
+    #         ts = [beta/len(Ops)] * len(Ops)
+    #     else:
+    #         assert len(ts) == len(Ops), "Need same number of Ops and ts."
 
     # ========================
     # Initialize
